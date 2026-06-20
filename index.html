@@ -168,6 +168,11 @@
     pointer-events: none;
   }
 
+  /* ふわっと元の位置に戻るアニメーション（不正解時） */
+  #draggable-shape.return-anim {
+    transition: left 0.4s ease-out, top 0.4s ease-out, transform 0.4s ease-out, opacity 0.4s ease-out;
+  }
+
   @keyframes shapeAppear {
     from {
       opacity: 0;
@@ -229,29 +234,47 @@
     pointer-events: none;
   }
 
-  /* ホバー・ドラッグオーバー時 */
+  /* ホバー・ドラッグオーバー時（青い光） */
   .slot-card.hover {
     transform: scale(1.08);
     box-shadow: 0 8px 24px rgba(100,180,255,0.5), inset 0 1px 3px rgba(255,255,255,0.9);
     background: rgba(200,235,255,0.95);
   }
 
-  /* 不正解シェイク */
-  .slot-card.wrong {
-    animation: wrongShake 0.5s ease;
-    background: rgba(255,200,200,0.92);
-    box-shadow: 0 4px 14px rgba(255,80,80,0.4);
+  /* ===== 近づいたときのパルス光（ヒントグロー） ===== */
+  .slot-card.near-glow {
+    animation: nearPulse 0.6s ease-in-out infinite;
   }
 
-  @keyframes wrongShake {
-    0%, 100% { transform: translateX(0) scale(1); }
-    15%  { transform: translateX(-10px) scale(1.04); }
-    30%  { transform: translateX(10px)  scale(1.04); }
-    45%  { transform: translateX(-8px)  scale(1.02); }
-    60%  { transform: translateX(8px)   scale(1.02); }
-    75%  { transform: translateX(-5px)  scale(1.01); }
-    90%  { transform: translateX(5px)   scale(1.01); }
+  @keyframes nearPulse {
+    0%, 100% {
+      box-shadow: 0 4px 14px rgba(0,0,0,0.13), 0 0 0 0 rgba(100,200,255,0.0);
+      background: rgba(255,255,255,0.82);
+    }
+    50% {
+      box-shadow: 0 8px 28px rgba(80,180,255,0.7), 0 0 0 8px rgba(100,200,255,0.3);
+      background: rgba(200,235,255,0.95);
+    }
   }
+
+  /* ===== 放置ヒント：正解スロットのパルス光 ===== */
+  .slot-card.hint-glow {
+    animation: hintPulse 0.5s ease-in-out infinite;
+  }
+
+  @keyframes hintPulse {
+    0%, 100% {
+      box-shadow: 0 4px 14px rgba(0,0,0,0.13), 0 0 0 0 rgba(255,220,50,0.0);
+      background: rgba(255,255,255,0.82);
+    }
+    50% {
+      box-shadow: 0 8px 30px rgba(255,200,0,0.8), 0 0 0 10px rgba(255,220,50,0.4);
+      background: rgba(255,250,200,0.95);
+    }
+  }
+
+  /* 不正解スタイル（シェイク・赤点滅なし → ニュートラル） */
+  /* .slot-card.wrong は削除 */
 
   /* ===== 正解エフェクト全画面オーバーレイ ===== */
   #correct-overlay {
@@ -372,6 +395,77 @@
     flex: 1 1 auto;
     min-height: 10px;
   }
+
+  /* ===== 音量コントロール（右上） ===== */
+  #volume-control {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 500;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* 音量アイコンボタン */
+  #volume-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,0.80);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+    transition: background 0.15s ease, transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  #volume-btn:active {
+    transform: scale(0.92);
+    background: rgba(220,235,255,0.95);
+  }
+
+  /* スライダーパネル（タップで開閉） */
+  #volume-panel {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.90);
+    border-radius: 16px;
+    padding: 10px 8px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+    min-width: 44px;
+  }
+
+  #volume-panel.open {
+    display: flex;
+  }
+
+  /* 縦型スライダー */
+  #volume-slider {
+    -webkit-appearance: slider-vertical;
+    appearance: slider-vertical;
+    writing-mode: vertical-lr;
+    direction: rtl;
+    width: 28px;
+    height: 100px;
+    cursor: pointer;
+    accent-color: #5a9eff;
+  }
+
+  /* スライダーパーセント表示 */
+  #volume-pct {
+    font-size: 11px;
+    font-weight: bold;
+    color: #444;
+  }
 </style>
 </head>
 <body>
@@ -379,6 +473,16 @@
 
   <!-- 上部余白 -->
   <div id="top-spacer"></div>
+
+  <!-- 音量コントロール（左上） -->
+  <div id="volume-control">
+    <button id="volume-btn" aria-label="音量調整">🔊</button>
+    <div id="volume-panel">
+      <input id="volume-slider" type="range" min="0" max="100" value="70"
+             orient="vertical" aria-label="音量">
+      <span id="volume-pct">70%</span>
+    </div>
+  </div>
 
   <!-- スコアエリア：⭐5つ段階的に光る -->
   <div id="score-area">
@@ -453,8 +557,11 @@ const COLOR_KEYS = Object.keys(COLORS);
 const SILHOUETTE_FILL   = 'rgba(180,190,200,0.45)';
 const SILHOUETTE_STROKE = 'rgba(140,155,175,0.7)';
 
-// スナップ判定距離（px）
-const SNAP_DISTANCE = 80;
+// スナップ判定距離（形サイズの50%目安：120px）
+const SNAP_DISTANCE = 120;
+
+// パルス光を出すヒント距離（80px以内でふわっと光る）
+const NEAR_GLOW_DISTANCE = 80;
 
 // レベル設定
 const LEVEL_CONFIG = {
@@ -476,6 +583,91 @@ let state = {
   isDragging:    false,   // ドラッグ中フラグ
   blocked:       false,   // アニメ中の入力ブロック
 };
+
+/* =====================================================
+   音量管理
+===================================================== */
+
+// 音量（0.0〜1.0）
+let masterVolume = 0.70;
+
+/**
+ * localStorageから音量を読み込む
+ */
+function loadVolume() {
+  try {
+    const saved = localStorage.getItem('shapePuzzleVolume');
+    if (saved !== null) {
+      masterVolume = Math.max(0, Math.min(1, parseFloat(saved)));
+    }
+  } catch(e) {}
+}
+
+/**
+ * localStorageに音量を保存する
+ */
+function saveVolume() {
+  try {
+    localStorage.setItem('shapePuzzleVolume', String(masterVolume));
+  } catch(e) {}
+}
+
+/**
+ * 音量UIを初期化しイベントをバインドする
+ */
+function initVolumeControl() {
+  loadVolume();
+
+  const btn    = document.getElementById('volume-btn');
+  const panel  = document.getElementById('volume-panel');
+  const slider = document.getElementById('volume-slider');
+  const pct    = document.getElementById('volume-pct');
+
+  // スライダーの初期値を設定
+  const initVal = Math.round(masterVolume * 100);
+  slider.value = initVal;
+  pct.textContent = initVal + '%';
+  updateVolumeIcon(initVal);
+
+  // ボタンタップでパネルの開閉
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    // AudioContextをユーザー操作で起動（iOS対策）
+    getAudioCtx();
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    panel.classList.toggle('open');
+  });
+
+  // スライダー操作で音量変更
+  slider.addEventListener('input', () => {
+    const val = parseInt(slider.value, 10);
+    masterVolume = val / 100;
+    pct.textContent = val + '%';
+    updateVolumeIcon(val);
+    saveVolume();
+  });
+
+  // パネル外タップで閉じる
+  document.addEventListener('click', e => {
+    if (!document.getElementById('volume-control').contains(e.target)) {
+      panel.classList.remove('open');
+    }
+  });
+}
+
+/**
+ * 音量に応じてアイコンを切り替える（ミュート時は🔇）
+ */
+function updateVolumeIcon(val) {
+  const btn = document.getElementById('volume-btn');
+  if (val === 0) {
+    btn.textContent = '🔇';
+  } else {
+    btn.textContent = '🔊';
+  }
+}
 
 /* =====================================================
    SVG 描画関数
@@ -562,10 +754,11 @@ function getAudioCtx() {
 
 /**
  * 正解音：明るいピコピコ3音（ド・ミ・ソ）
+ * masterVolumeを乗算して出力
  */
 function playCorrectSound() {
   const ctx = getAudioCtx();
-  if (!ctx) return;
+  if (!ctx || masterVolume === 0) return;
 
   const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
   notes.forEach((freq, i) => {
@@ -577,7 +770,9 @@ function playCorrectSound() {
     osc.type = 'square';
     osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
 
-    gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
+    // 音量にmasterVolumeを反映（基準0.18）
+    const vol = 0.18 * masterVolume;
+    gain.gain.setValueAtTime(vol, ctx.currentTime + i * 0.12);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.18);
 
     osc.start(ctx.currentTime + i * 0.12);
@@ -586,26 +781,30 @@ function playCorrectSound() {
 }
 
 /**
- * 不正解音：低いブー1音
+ * 不正解音：柔らかい低めの短いトン音（Web Audio APIで生成）
+ * 赤点滅・シェイクなし。音量は小さく短く。
  */
 function playWrongSound() {
   const ctx = getAudioCtx();
-  if (!ctx) return;
+  if (!ctx || masterVolume === 0) return;
 
   const osc  = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
   gain.connect(ctx.destination);
 
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(120, ctx.currentTime);
-  osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.35);
+  // サイン波で柔らかい音にする（sawtooth → sine に変更）
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(220, ctx.currentTime);       // A3（低めで穏やか）
+  osc.frequency.linearRampToValueAtTime(180, ctx.currentTime + 0.15);
 
-  gain.gain.setValueAtTime(0.2, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  // 短く小さく（0.15秒）
+  const vol = 0.08 * masterVolume;
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
 
   osc.start(ctx.currentTime);
-  osc.stop(ctx.currentTime + 0.4);
+  osc.stop(ctx.currentTime + 0.16);
 }
 
 /* =====================================================
@@ -706,6 +905,10 @@ function renderQuestion() {
   el.style.top    = '';
   el.style.position = '';
   el.style.transform = '';
+  el.style.opacity = '';
+
+  // 問題が表示されてから8秒後にヒントを出す
+  resetHintTimer();
 }
 
 function renderSlots() {
@@ -726,10 +929,81 @@ function renderSlots() {
 }
 
 /* =====================================================
+   放置ヒントタイマー管理
+===================================================== */
+
+let hintTimerQuestion = null;   // 問題表示後8秒のタイマー
+let hintTimerDrag     = null;   // ドラッグ開始後5秒のタイマー
+let hintActive        = false;  // ヒント表示中フラグ
+
+/**
+ * ヒントタイマーをリセット（問題切替時に呼ぶ）
+ * 問題表示から8秒後にヒントを表示する
+ */
+function resetHintTimer() {
+  clearHintTimers();
+  hintActive = false;
+  // 問題が表示されてから8秒後にヒント発動
+  hintTimerQuestion = setTimeout(() => {
+    showHint();
+  }, 8000);
+}
+
+/**
+ * ドラッグ開始時のヒントタイマー（5秒後）
+ * ドラッグ開始後5秒間操作しない場合もヒントを出す
+ */
+function startDragHintTimer() {
+  clearTimeout(hintTimerDrag);
+  // ドラッグ中は問題タイマーを一時停止
+  clearTimeout(hintTimerQuestion);
+  hintActive = false;
+  hideHint();
+  // ドラッグ開始から5秒後にヒント
+  hintTimerDrag = setTimeout(() => {
+    showHint();
+  }, 5000);
+}
+
+/**
+ * 全タイマーをクリア
+ */
+function clearHintTimers() {
+  clearTimeout(hintTimerQuestion);
+  clearTimeout(hintTimerDrag);
+}
+
+/**
+ * 正解スロットにヒント（ゆっくりパルス光）を表示する
+ */
+function showHint() {
+  hintActive = true;
+  // 正解スロットを探してhint-glowクラスを付与
+  document.querySelectorAll('.slot-card').forEach(card => {
+    if (card.dataset.shape === state.currentShape) {
+      card.classList.add('hint-glow');
+    }
+  });
+}
+
+/**
+ * ヒントを非表示にする
+ */
+function hideHint() {
+  hintActive = false;
+  document.querySelectorAll('.slot-card').forEach(card => {
+    card.classList.remove('hint-glow');
+  });
+}
+
+/* =====================================================
    ドラッグ＆ドロップ（マウス＋タッチ共通）
 ===================================================== */
 
 const dragEl = document.getElementById('draggable-shape');
+
+// ドラッグ開始時点の元位置（ふわっと戻るアニメ用）
+let dragOriginRect = null;
 
 // ドラッグ開始時の共通処理
 function onDragStart(clientX, clientY) {
@@ -741,7 +1015,14 @@ function onDragStart(clientX, clientY) {
     audioCtx.resume();
   }
 
+  // ドラッグ前の位置を記録（戻るアニメ用）
+  dragOriginRect = dragEl.getBoundingClientRect();
+
   state.isDragging = true;
+
+  // ヒントを非表示にしてドラッグヒントタイマー開始
+  hideHint();
+  startDragHintTimer();
 
   // お題を fixed 配置にして指（中心）に追従させる
   dragEl.classList.add('dragging');
@@ -754,14 +1035,20 @@ function onDragMove(clientX, clientY) {
   if (!state.isDragging) return;
   moveDragEl(clientX, clientY);
 
-  // スロットカードのホバーハイライト
-  const slots = document.querySelectorAll('.slot-card');
-  slots.forEach(card => {
+  // スロットカードのホバー・パルス光ハイライト
+  document.querySelectorAll('.slot-card').forEach(card => {
     const dist = distToCenter(card, clientX, clientY);
-    if (dist < SNAP_DISTANCE * 1.3) {
+    // 完全ホバー：スナップ判定距離内
+    if (dist < SNAP_DISTANCE) {
       card.classList.add('hover');
+      card.classList.remove('near-glow');
+    // 近接パルス光：80px以内でふわっと光る
+    } else if (dist < NEAR_GLOW_DISTANCE + SNAP_DISTANCE) {
+      card.classList.remove('hover');
+      card.classList.add('near-glow');
     } else {
       card.classList.remove('hover');
+      card.classList.remove('near-glow');
     }
   });
 }
@@ -771,8 +1058,14 @@ function onDragEnd(clientX, clientY) {
   if (!state.isDragging) return;
   state.isDragging = false;
 
-  // 全ホバー解除
-  document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('hover'));
+  // 全ホバー・パルス光解除
+  document.querySelectorAll('.slot-card').forEach(c => {
+    c.classList.remove('hover');
+    c.classList.remove('near-glow');
+  });
+
+  // ドラッグのヒントタイマーをクリア
+  clearTimeout(hintTimerDrag);
 
   // 最近傍スロットを探す
   let nearest = null;
@@ -790,11 +1083,11 @@ function onDragEnd(clientX, clientY) {
     if (nearest.dataset.shape === state.currentShape) {
       onCorrect();
     } else {
-      onWrong(nearest);
+      onWrong();
     }
   } else {
-    // 範囲外 → お題を元の位置に戻す
-    resetDragEl();
+    // 範囲外 → お題をふわっと元の位置に戻す
+    returnDragEl();
   }
 }
 
@@ -809,13 +1102,48 @@ function moveDragEl(clientX, clientY) {
   dragEl.style.transform = 'scale(1.08)';
 }
 
-// お題を元の表示位置に戻す
+// お題を元の表示位置に即座に戻す（正解時など）
 function resetDragEl() {
   dragEl.classList.remove('dragging');
+  dragEl.classList.remove('return-anim');
   dragEl.style.position  = '';
   dragEl.style.left      = '';
   dragEl.style.top       = '';
   dragEl.style.transform = '';
+}
+
+/**
+ * お題をふわっと元の位置にアニメーションで戻す（不正解・範囲外ドロップ時）
+ * 0.4秒かけてゆっくり戻る
+ */
+function returnDragEl() {
+  if (!dragOriginRect) {
+    resetDragEl();
+    return;
+  }
+
+  // 現在 fixed 位置を維持したまま transition を有効にする
+  dragEl.classList.add('return-anim');
+
+  // ドラッグ前の位置（fixed座標に変換）へ移動
+  const targetLeft = dragOriginRect.left;
+  const targetTop  = dragOriginRect.top;
+
+  // わずかに遅延してtransitionを発火させる（ブラウザがleftを認識してから）
+  requestAnimationFrame(() => {
+    dragEl.style.left      = `${targetLeft}px`;
+    dragEl.style.top       = `${targetTop}px`;
+    dragEl.style.transform = 'scale(1)';
+
+    // アニメ完了後にスタイルをリセット
+    setTimeout(() => {
+      resetDragEl();
+      // 放置ヒントタイマーを再開
+      hintTimerQuestion = setTimeout(() => {
+        showHint();
+      }, 5000);
+    }, 420);
+  });
 }
 
 // 要素の中心とポインタ座標の距離
@@ -867,6 +1195,10 @@ function onCorrect() {
   if (state.blocked) return;
   state.blocked = true;
 
+  // ヒントタイマーをリセット（問題が変わるため）
+  clearHintTimers();
+  hideHint();
+
   playCorrectSound();
 
   // スコア更新
@@ -892,19 +1224,24 @@ function onCorrect() {
   });
 }
 
-function onWrong(card) {
+/**
+ * 不正解処理：音はなし（柔らかいトン音のみ）、赤点滅・シェイクなし
+ * お題がふわっと元の位置に戻る
+ */
+function onWrong() {
   if (state.blocked) return;
   state.blocked = true;
 
+  // 柔らかい短いトン音を鳴らす
   playWrongSound();
-  resetDragEl();
 
-  // カードを赤くプルプル
-  card.classList.add('wrong');
+  // お題をふわっと元の位置に戻す（0.4秒）
+  returnDragEl();
+
+  // ブロックを解除（戻るアニメ完了後）
   setTimeout(() => {
-    card.classList.remove('wrong');
     state.blocked = false;
-  }, 520);
+  }, 440);
 }
 
 /* =====================================================
@@ -1012,6 +1349,7 @@ function nextQuestion() {
 function initGame() {
   loadHighscore();
   updateScoreDisplay();
+  initVolumeControl();
   nextQuestion();
 }
 
