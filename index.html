@@ -3,527 +3,1152 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>かたち・いろ あわせゲーム</title>
+<title>あそぼう！知育ゲーム</title>
 <style>
-  /* ===== リセット・ベース ===== */
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: none;
-    user-select: none;
-    -webkit-user-select: none;
-  }
+/* ===== リセット・ベース ===== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
 
-  html, body {
-    width: 100%;
-    height: 100%;
-    overflow: hidden;
-  }
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: 'Hiragino Maru Gothic ProN', 'BIZ UDPGothic', sans-serif;
+}
 
-  /* ===== ゲーム全体のラッパー（スマホ縦向き最適化） ===== */
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #b0c4de;
-    font-family: sans-serif;
-  }
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #b0c4de;
+}
 
-  #game-container {
-    position: relative;
-    width: 100%;
-    max-width: 430px;
-    height: 100svh;
-    /* パステルグラデーション：空から草原へ */
-    background: linear-gradient(
-      180deg,
-      #a8d8f0 0%,      /* 空色 */
-      #c5e8f0 30%,     /* 薄い水色 */
-      #d4f0c8 65%,     /* 草原の薄緑 */
-      #b8e09a 100%     /* 草原の緑 */
-    );
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
+/* ===== 全画面共通ラッパー ===== */
+#app {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  height: 100svh;
+  overflow: hidden;
+}
 
-  /* ===== 雲の背景装飾（CSS only） ===== */
-  #game-container::before {
-    content: '';
-    position: absolute;
-    top: 40px;
-    left: -30px;
-    width: 120px;
-    height: 60px;
-    background: rgba(255,255,255,0.55);
-    border-radius: 50px;
-    box-shadow: 70px -10px 0 rgba(255,255,255,0.4), 140px 5px 0 rgba(255,255,255,0.3);
-    pointer-events: none;
-  }
+/* ===== 各画面の基本スタイル ===== */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
 
-  /* ===== スコアエリア（⭐最大5つ） ===== */
-  #score-area {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-    padding: 14px 20px 6px;
-    width: 100%;
-  }
+.screen.active {
+  display: flex;
+}
 
-  /* 各⭐ */
-  .score-star {
-    font-size: 32px;
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    filter: grayscale(0.8) brightness(0.7);
-    display: inline-block;
-  }
+/* ===== 共通上部バー（ホームボタン＋音量） ===== */
+.game-topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 10px 12px 0;
+  pointer-events: none;
+}
 
-  /* 点灯中の⭐ */
-  .score-star.lit {
-    filter: none;
-    transform: scale(1.15);
-  }
+.game-topbar > * {
+  pointer-events: auto;
+}
 
-  /* ハイスコア表示バッジ */
-  #highscore-badge {
-    position: absolute;
-    right: 14px;
-    top: 50%;
-    transform: translateY(-50%);
-    background: rgba(255,215,0,0.85);
-    border-radius: 20px;
-    padding: 4px 10px;
-    display: flex;
-    align-items: center;
-    gap: 3px;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
-  }
+/* ホームボタン */
+.home-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.85);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  transition: transform 0.1s ease, background 0.15s ease;
+  touch-action: manipulation;
+}
 
-  #highscore-badge .hs-star {
-    font-size: 14px;
-  }
+.home-btn:active {
+  transform: scale(0.92);
+  background: rgba(220,235,255,0.95);
+}
 
-  #highscore-num {
-    font-size: 14px;
-    font-weight: bold;
-    color: #7a5000;
-  }
+/* 音量コントロール */
+.volume-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
 
-  /* ===== レベルバッジ ===== */
-  #level-badge {
-    background: rgba(255,255,255,0.75);
-    border-radius: 20px;
-    padding: 4px 16px;
-    font-size: 15px;
-    font-weight: bold;
-    color: #5a3e9b;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-    margin-bottom: 2px;
-  }
+.volume-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.85);
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+  transition: transform 0.1s ease, background 0.15s ease;
+  touch-action: manipulation;
+}
 
-  /* ===== お題エリア ===== */
-  #question-area {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    padding: 10px 0 5px;
-  }
+.volume-btn:active {
+  transform: scale(0.92);
+}
 
-  /* お題のかたち本体（ドラッグ対象） */
-  #draggable-shape {
-    cursor: grab;
-    position: relative;
-    z-index: 200;
-    /* ふわっと登場アニメ */
-    animation: shapeAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.22));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+.volume-panel {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.92);
+  border-radius: 16px;
+  padding: 10px 8px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  min-width: 44px;
+}
 
-  #draggable-shape svg {
-    width: 200px;
-    height: 200px;
-    pointer-events: none;
-  }
+.volume-panel.open {
+  display: flex;
+}
 
-  /* ドラッグ中はフローティング状態 */
-  #draggable-shape.dragging {
-    cursor: grabbing;
-    position: fixed;
-    z-index: 9999;
-    filter: drop-shadow(0 12px 24px rgba(0,0,0,0.35));
-    transform: scale(1.08);
-    pointer-events: none;
-  }
+.volume-slider {
+  -webkit-appearance: slider-vertical;
+  appearance: slider-vertical;
+  writing-mode: vertical-lr;
+  direction: rtl;
+  width: 28px;
+  height: 100px;
+  cursor: pointer;
+  accent-color: #5a9eff;
+}
 
-  /* ふわっと元の位置に戻るアニメーション（不正解時） */
-  #draggable-shape.return-anim {
-    transition: left 0.4s ease-out, top 0.4s ease-out, transform 0.4s ease-out, opacity 0.4s ease-out;
-  }
+.volume-pct {
+  font-size: 11px;
+  font-weight: bold;
+  color: #444;
+}
 
-  @keyframes shapeAppear {
-    from {
-      opacity: 0;
-      transform: scale(0.4) translateY(-60px);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
-    }
-  }
+/* =====================================================
+   ホーム画面
+===================================================== */
+#screen-home {
+  background: linear-gradient(160deg, #ffe4f0 0%, #fff8dc 35%, #e0f7fa 70%, #e8f5e9 100%);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
 
-  /* ===== シルエット枠エリア ===== */
-  #slots-area {
-    position: relative;
-    z-index: 10;
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: flex-end;
-    gap: 14px;
-    padding: 10px 14px 24px;
-    flex-wrap: wrap;
-    width: 100%;
-    margin-top: auto;
-  }
+/* ホームのタイトル */
+.home-title {
+  margin-top: 60px;
+  font-size: 52px;
+  font-weight: 900;
+  letter-spacing: 4px;
+  text-align: center;
+  /* カラフルな文字 */
+  background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff, #ff6b9d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  filter: drop-shadow(0 3px 6px rgba(0,0,0,0.12));
+  padding: 0 12px;
+}
 
-  /* 各シルエット枠カード */
-  .slot-card {
-    background: rgba(255,255,255,0.82);
-    border-radius: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 130px;
-    height: 130px;
-    box-shadow:
-      0 4px 14px rgba(0,0,0,0.13),
-      inset 0 1px 3px rgba(255,255,255,0.9);
-    transition:
-      transform 0.18s ease,
-      box-shadow 0.18s ease,
-      background 0.18s ease;
-    position: relative;
-  }
+.home-subtitle {
+  font-size: 16px;
+  color: #888;
+  margin-top: 4px;
+  margin-bottom: 20px;
+  letter-spacing: 2px;
+}
 
-  /* レベル2（4枠）では少し小さく */
-  .slot-card.small {
-    width: 110px;
-    height: 110px;
-  }
-  .slot-card.small svg {
-    width: 70px;
-    height: 70px;
-  }
+/* ゲームカードリスト */
+.game-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+  padding: 0 20px 40px;
+}
 
-  .slot-card svg {
-    width: 80px;
-    height: 80px;
-    pointer-events: none;
-  }
+/* 各ゲームカード */
+.game-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(255,255,255,0.88);
+  border-radius: 24px;
+  padding: 18px 20px;
+  min-height: 88px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(0,0,0,0.10),
+    0 1px 4px rgba(0,0,0,0.07);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  touch-action: manipulation;
+  border: 3px solid transparent;
+}
 
-  /* ホバー・ドラッグオーバー時（青い光） */
-  .slot-card.hover {
-    transform: scale(1.08);
-    box-shadow: 0 8px 24px rgba(100,180,255,0.5), inset 0 1px 3px rgba(255,255,255,0.9);
-    background: rgba(200,235,255,0.95);
-  }
+.game-card:active {
+  transform: scale(0.97);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
 
-  /* ===== 近づいたときのパルス光（ヒントグロー） ===== */
-  .slot-card.near-glow {
-    animation: nearPulse 0.6s ease-in-out infinite;
-  }
+/* カードのアクセントカラー */
+.game-card:nth-child(1) { border-color: #4d96ff33; background: linear-gradient(135deg, rgba(255,255,255,0.95), #e8f0ff); }
+.game-card:nth-child(2) { border-color: #ff6b9d33; background: linear-gradient(135deg, rgba(255,255,255,0.95), #ffe8f4); }
+.game-card:nth-child(3) { border-color: #ffd93d33; background: linear-gradient(135deg, rgba(255,255,255,0.95), #fff8e0); }
+.game-card:nth-child(4) { border-color: #6bcb7733; background: linear-gradient(135deg, rgba(255,255,255,0.95), #e8fbed); }
+.game-card:nth-child(5) { border-color: #ff8c4233; background: linear-gradient(135deg, rgba(255,255,255,0.95), #fff0e4); }
 
-  @keyframes nearPulse {
-    0%, 100% {
-      box-shadow: 0 4px 14px rgba(0,0,0,0.13), 0 0 0 0 rgba(100,200,255,0.0);
-      background: rgba(255,255,255,0.82);
-    }
-    50% {
-      box-shadow: 0 8px 28px rgba(80,180,255,0.7), 0 0 0 8px rgba(100,200,255,0.3);
-      background: rgba(200,235,255,0.95);
-    }
-  }
+.card-icon {
+  font-size: 48px;
+  flex: 0 0 auto;
+  line-height: 1;
+}
 
-  /* ===== 放置ヒント：正解スロットのパルス光 ===== */
-  .slot-card.hint-glow {
-    animation: hintPulse 0.5s ease-in-out infinite;
-  }
+.card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-  @keyframes hintPulse {
-    0%, 100% {
-      box-shadow: 0 4px 14px rgba(0,0,0,0.13), 0 0 0 0 rgba(255,220,50,0.0);
-      background: rgba(255,255,255,0.82);
-    }
-    50% {
-      box-shadow: 0 8px 30px rgba(255,200,0,0.8), 0 0 0 10px rgba(255,220,50,0.4);
-      background: rgba(255,250,200,0.95);
-    }
-  }
+.card-name {
+  font-size: 22px;
+  font-weight: 800;
+  color: #333;
+  letter-spacing: 1px;
+}
 
-  /* 不正解スタイル（シェイク・赤点滅なし → ニュートラル） */
-  /* .slot-card.wrong は削除 */
+.card-desc {
+  font-size: 13px;
+  color: #888;
+  letter-spacing: 0.5px;
+}
 
-  /* ===== 正解エフェクト全画面オーバーレイ ===== */
-  #correct-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 8000;
-    display: none;
-    pointer-events: none;
-    overflow: hidden;
-  }
+.card-arrow {
+  margin-left: auto;
+  font-size: 24px;
+  color: #ccc;
+  flex: 0 0 auto;
+}
 
-  #correct-overlay.active {
-    display: block;
-  }
+/* =====================================================
+   ゲーム1：かたちあわせ（既存を移植）
+===================================================== */
+#screen-game1 {
+  background: linear-gradient(
+    180deg,
+    #a8d8f0 0%,
+    #c5e8f0 30%,
+    #d4f0c8 65%,
+    #b8e09a 100%
+  );
+  touch-action: none;
+}
 
-  /* 中央の大きな⭐ */
-  #big-star {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    font-size: 160px;
-    z-index: 8100;
-    animation: bigStarAnim 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    filter: drop-shadow(0 0 30px rgba(255,220,0,0.9));
-  }
+/* 雲の背景装飾 */
+#screen-game1::before {
+  content: '';
+  position: absolute;
+  top: 40px;
+  left: -30px;
+  width: 120px;
+  height: 60px;
+  background: rgba(255,255,255,0.55);
+  border-radius: 50px;
+  box-shadow: 70px -10px 0 rgba(255,255,255,0.4), 140px 5px 0 rgba(255,255,255,0.3);
+  pointer-events: none;
+}
 
-  @keyframes bigStarAnim {
-    0%   { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 1; }
-    55%  { transform: translate(-50%, -50%) scale(1.3) rotate(8deg); opacity: 1; }
-    80%  { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 1; }
-    100% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity: 0; }
-  }
+/* スコアエリア */
+#g1-score-area {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 70px 20px 6px;
+  width: 100%;
+}
 
-  /* キラキラ（小さい星が飛び散る） */
-  .sparkle {
-    position: absolute;
-    font-size: 28px;
-    z-index: 8050;
-    animation: sparkleFly 0.8s ease-out forwards;
-    pointer-events: none;
-  }
+.score-star {
+  font-size: 32px;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  filter: grayscale(0.8) brightness(0.7);
+  display: inline-block;
+}
 
-  @keyframes sparkleFly {
-    0%   { transform: translate(0,0) scale(1);   opacity: 1; }
-    100% { transform: var(--tx, translate(80px, 0) scale(0.2)); opacity: 0; }
-  }
+.score-star.lit {
+  filter: none;
+  transform: scale(1.15);
+}
 
-  /* 紙吹雪 */
-  .confetti {
-    position: absolute;
-    width: 12px;
-    height: 12px;
-    border-radius: 2px;
-    top: -20px;
-    animation: confettiFall linear forwards;
-    z-index: 8050;
-  }
+#g1-highscore-badge {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255,215,0,0.85);
+  border-radius: 20px;
+  padding: 4px 10px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+}
 
-  @keyframes confettiFall {
-    0%   { transform: translateY(0) rotate(0deg)   translateX(0);   opacity: 1; }
-    100% { transform: translateY(110vh) rotate(720deg) translateX(var(--cx, 0)); opacity: 0; }
-  }
+#g1-highscore-badge .hs-star { font-size: 14px; }
+#g1-highscore-num { font-size: 14px; font-weight: bold; color: #7a5000; }
 
-  /* ===== レベルアップオーバーレイ ===== */
-  #levelup-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9000;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    background: rgba(80, 50, 160, 0.72);
-    pointer-events: none;
-  }
+#g1-level-badge {
+  background: rgba(255,255,255,0.75);
+  border-radius: 20px;
+  padding: 4px 16px;
+  font-size: 15px;
+  font-weight: bold;
+  color: #5a3e9b;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  margin-bottom: 2px;
+  z-index: 10;
+}
 
-  #levelup-overlay.active {
-    display: flex;
-    animation: levelupFade 1.8s ease forwards;
-  }
+/* お題エリア */
+#g1-question-area {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  padding: 10px 0 5px;
+}
 
-  #levelup-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    animation: levelupPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-  }
+#g1-draggable-shape {
+  cursor: grab;
+  position: relative;
+  z-index: 200;
+  animation: shapeAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.22));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
-  #levelup-stars {
-    font-size: 64px;
-    letter-spacing: 8px;
-  }
+#g1-draggable-shape svg {
+  width: 200px;
+  height: 200px;
+  pointer-events: none;
+}
 
-  #levelup-emoji {
-    font-size: 90px;
-    filter: drop-shadow(0 0 20px rgba(255,220,0,0.9));
-  }
+#g1-draggable-shape.dragging {
+  cursor: grabbing;
+  position: fixed;
+  z-index: 9999;
+  filter: drop-shadow(0 12px 24px rgba(0,0,0,0.35));
+  transform: scale(1.08);
+  pointer-events: none;
+}
 
-  @keyframes levelupPop {
-    from { transform: scale(0) rotate(-10deg); opacity: 0; }
-    to   { transform: scale(1) rotate(0deg);   opacity: 1; }
-  }
+#g1-draggable-shape.return-anim {
+  transition: left 0.4s ease-out, top 0.4s ease-out, transform 0.4s ease-out, opacity 0.4s ease-out;
+}
 
-  @keyframes levelupFade {
-    0%   { opacity: 1; }
-    60%  { opacity: 1; }
-    100% { opacity: 0; }
-  }
+@keyframes shapeAppear {
+  from { opacity: 0; transform: scale(0.4) translateY(-60px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
 
-  /* ===== スペーサー（上部余白調整） ===== */
-  #top-spacer {
-    flex: 0 0 8px;
-  }
+/* シルエット枠 */
+#g1-slots-area {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-end;
+  gap: 14px;
+  padding: 10px 14px 24px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin-top: auto;
+}
 
-  /* ===== ミドルスペーサー（お題とスロットの間の余白） ===== */
-  #mid-spacer {
-    flex: 1 1 auto;
-    min-height: 10px;
-  }
+.slot-card {
+  background: rgba(255,255,255,0.82);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 130px;
+  height: 130px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.13), inset 0 1px 3px rgba(255,255,255,0.9);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+  position: relative;
+}
 
-  /* ===== 音量コントロール（右上） ===== */
-  #volume-control {
-    position: absolute;
-    top: 12px;
-    left: 12px;
-    z-index: 500;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
+.slot-card.small { width: 110px; height: 110px; }
+.slot-card.small svg { width: 70px; height: 70px; }
+.slot-card svg { width: 80px; height: 80px; pointer-events: none; }
 
-  /* 音量アイコンボタン */
-  #volume-btn {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(255,255,255,0.80);
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.18);
-    transition: background 0.15s ease, transform 0.1s ease;
-    -webkit-tap-highlight-color: transparent;
-    touch-action: manipulation;
-  }
+.slot-card.hover {
+  transform: scale(1.08);
+  box-shadow: 0 8px 24px rgba(100,180,255,0.5), inset 0 1px 3px rgba(255,255,255,0.9);
+  background: rgba(200,235,255,0.95);
+}
 
-  #volume-btn:active {
-    transform: scale(0.92);
-    background: rgba(220,235,255,0.95);
-  }
+.slot-card.near-glow {
+  animation: nearPulse 0.6s ease-in-out infinite;
+}
 
-  /* スライダーパネル（タップで開閉） */
-  #volume-panel {
-    display: none;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    background: rgba(255,255,255,0.90);
-    border-radius: 16px;
-    padding: 10px 8px;
-    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
-    min-width: 44px;
-  }
+@keyframes nearPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.13), 0 0 0 0 rgba(100,200,255,0.0); background: rgba(255,255,255,0.82); }
+  50%       { box-shadow: 0 8px 28px rgba(80,180,255,0.7), 0 0 0 8px rgba(100,200,255,0.3); background: rgba(200,235,255,0.95); }
+}
 
-  #volume-panel.open {
-    display: flex;
-  }
+.slot-card.hint-glow {
+  animation: hintPulse 0.5s ease-in-out infinite;
+}
 
-  /* 縦型スライダー */
-  #volume-slider {
-    -webkit-appearance: slider-vertical;
-    appearance: slider-vertical;
-    writing-mode: vertical-lr;
-    direction: rtl;
-    width: 28px;
-    height: 100px;
-    cursor: pointer;
-    accent-color: #5a9eff;
-  }
+@keyframes hintPulse {
+  0%, 100% { box-shadow: 0 4px 14px rgba(0,0,0,0.13), 0 0 0 0 rgba(255,220,50,0.0); background: rgba(255,255,255,0.82); }
+  50%       { box-shadow: 0 8px 30px rgba(255,200,0,0.8), 0 0 0 10px rgba(255,220,50,0.4); background: rgba(255,250,200,0.95); }
+}
 
-  /* スライダーパーセント表示 */
-  #volume-pct {
-    font-size: 11px;
-    font-weight: bold;
-    color: #444;
-  }
+#g1-mid-spacer { flex: 1 1 auto; min-height: 10px; }
+
+/* =====================================================
+   共通：正解エフェクトオーバーレイ
+===================================================== */
+#correct-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 8000;
+  display: none;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+#correct-overlay.active { display: block; }
+
+#big-star {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  font-size: 160px;
+  z-index: 8100;
+  animation: bigStarAnim 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  filter: drop-shadow(0 0 30px rgba(255,220,0,0.9));
+}
+
+@keyframes bigStarAnim {
+  0%   { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 1; }
+  55%  { transform: translate(-50%, -50%) scale(1.3) rotate(8deg); opacity: 1; }
+  80%  { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity: 0; }
+}
+
+.sparkle {
+  position: absolute;
+  font-size: 28px;
+  z-index: 8050;
+  animation: sparkleFly 0.8s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes sparkleFly {
+  0%   { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: var(--tx, translate(80px,0) scale(0.2)); opacity: 0; }
+}
+
+.confetti {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  top: -20px;
+  animation: confettiFall linear forwards;
+  z-index: 8050;
+}
+
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg) translateX(0); opacity: 1; }
+  100% { transform: translateY(110vh) rotate(720deg) translateX(var(--cx,0)); opacity: 0; }
+}
+
+/* レベルアップオーバーレイ */
+#levelup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(80,50,160,0.72);
+  pointer-events: none;
+}
+
+#levelup-overlay.active {
+  display: flex;
+  animation: levelupFade 1.8s ease forwards;
+}
+
+#levelup-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: levelupPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+#levelup-stars { font-size: 64px; letter-spacing: 8px; }
+#levelup-emoji { font-size: 90px; filter: drop-shadow(0 0 20px rgba(255,220,0,0.9)); }
+
+@keyframes levelupPop {
+  from { transform: scale(0) rotate(-10deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+}
+
+@keyframes levelupFade {
+  0%   { opacity: 1; }
+  60%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* =====================================================
+   ゲーム2：あわをはじこう（バブルはじき）
+===================================================== */
+#screen-game2 {
+  background: linear-gradient(180deg, #1a1a4e 0%, #0d3b6e 50%, #1a4a2e 100%);
+  position: relative;
+}
+
+/* お題テキスト */
+#g2-mission {
+  position: relative;
+  z-index: 10;
+  margin-top: 70px;
+  background: rgba(255,255,255,0.15);
+  backdrop-filter: blur(6px);
+  border-radius: 20px;
+  padding: 14px 24px;
+  text-align: center;
+  width: calc(100% - 40px);
+  border: 2px solid rgba(255,255,255,0.25);
+}
+
+#g2-mission-text {
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: 1px;
+  display: block;
+}
+
+#g2-count-display {
+  font-size: 16px;
+  color: rgba(255,255,255,0.8);
+  margin-top: 4px;
+  display: block;
+}
+
+/* 泡エリア */
+#g2-bubble-area {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* 個々の泡 */
+.bubble {
+  position: absolute;
+  border-radius: 50%;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  animation: bubbleFloat linear infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes bubbleFloat {
+  0%   { bottom: -120px; opacity: 0; }
+  5%   { opacity: 0.9; }
+  95%  { opacity: 0.9; }
+  100% { bottom: 110%; opacity: 0; }
+}
+
+/* 泡をはじくアニメーション */
+@keyframes bubblePop {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.6); opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
+.bubble.popping {
+  animation: bubblePop 0.35s ease-out forwards !important;
+  pointer-events: none;
+}
+
+/* =====================================================
+   ゲーム3：どうぶつだあれ？
+===================================================== */
+#screen-game3 {
+  background: linear-gradient(160deg, #fff9e6 0%, #ffecd2 50%, #e8f5e9 100%);
+}
+
+#g3-header {
+  margin-top: 70px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #5a3e00;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+#g3-progress {
+  font-size: 14px;
+  color: #888;
+  margin-top: 4px;
+}
+
+/* 問題カード（中央の？マーク） */
+#g3-question-card {
+  width: 160px;
+  height: 160px;
+  background: linear-gradient(135deg, #fff3cd, #ffe0b2);
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 80px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.15), inset 0 2px 6px rgba(255,255,255,0.8);
+  margin: 16px 0;
+  transition: transform 0.3s ease;
+  position: relative;
+  z-index: 10;
+}
+
+#g3-question-card.correct-anim {
+  animation: correctBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes correctBounce {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.25); }
+  70%  { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+
+/* 鳴き声ボタン */
+#g3-sound-btn {
+  background: linear-gradient(135deg, #ffd93d, #ff8c42);
+  border: none;
+  border-radius: 28px;
+  padding: 16px 36px;
+  font-size: 22px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(255,140,66,0.45);
+  touch-action: manipulation;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 1px;
+  z-index: 10;
+  position: relative;
+}
+
+#g3-sound-btn:active {
+  transform: scale(0.95);
+  box-shadow: 0 3px 10px rgba(255,140,66,0.45);
+}
+
+/* 3択ボタンエリア */
+#g3-choices {
+  display: flex;
+  gap: 16px;
+  margin-top: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  z-index: 10;
+  position: relative;
+}
+
+.g3-choice-btn {
+  width: 96px;
+  height: 96px;
+  border-radius: 24px;
+  border: 3px solid rgba(0,0,0,0.08);
+  background: rgba(255,255,255,0.9);
+  font-size: 52px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+  touch-action: manipulation;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.g3-choice-btn:active {
+  transform: scale(0.93);
+}
+
+.g3-choice-btn.wrong-anim {
+  animation: gentleWobble 0.4s ease;
+}
+
+@keyframes gentleWobble {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(0.92) rotate(-3deg); }
+  60%  { transform: scale(1.04) rotate(2deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* =====================================================
+   ゲーム4：おなじのはどれ？（神経衰弱）
+===================================================== */
+#screen-game4 {
+  background: linear-gradient(160deg, #e8eaf6 0%, #f3e5f5 50%, #e0f2f1 100%);
+}
+
+#g4-header {
+  margin-top: 70px;
+  text-align: center;
+  z-index: 10;
+  position: relative;
+}
+
+#g4-pairs-left {
+  font-size: 22px;
+  font-weight: 800;
+  color: #4a148c;
+  letter-spacing: 1px;
+}
+
+#g4-level-text {
+  font-size: 14px;
+  color: #9c4dcc;
+  margin-top: 2px;
+}
+
+/* カードグリッド */
+#g4-grid {
+  display: grid;
+  gap: 10px;
+  padding: 16px;
+  z-index: 10;
+  position: relative;
+  margin-top: 10px;
+}
+
+/* 各カード */
+.memo-card {
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ce93d8, #9c4dcc);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 42px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  touch-action: manipulation;
+  /* フリップ用 */
+  perspective: 600px;
+  aspect-ratio: 1;
+}
+
+.memo-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.4s ease;
+  border-radius: 18px;
+}
+
+.memo-card.flipped .memo-card-inner {
+  transform: rotateY(180deg);
+}
+
+.memo-card-front,
+.memo-card-back {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 18px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+/* 裏面（パープル） */
+.memo-card-front {
+  background: linear-gradient(135deg, #ce93d8, #9c4dcc);
+  font-size: 28px;
+}
+
+/* 表面（絵柄） */
+.memo-card-back {
+  background: linear-gradient(135deg, #fff9c4, #fff3e0);
+  transform: rotateY(180deg);
+  border: 3px solid rgba(255,200,0,0.3);
+}
+
+/* マッチ成功時 */
+.memo-card.matched {
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+/* =====================================================
+   ゲーム5：いくつあるかな？
+===================================================== */
+#screen-game5 {
+  background: linear-gradient(160deg, #e0f7fa 0%, #fff8e1 50%, #fce4ec 100%);
+}
+
+#g5-header {
+  margin-top: 70px;
+  font-size: 24px;
+  font-weight: 800;
+  color: #00695c;
+  letter-spacing: 2px;
+  text-align: center;
+  z-index: 10;
+  position: relative;
+}
+
+#g5-progress {
+  font-size: 14px;
+  color: #888;
+  margin-top: 2px;
+}
+
+/* アイテム表示エリア */
+#g5-items-area {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  min-height: 180px;
+  z-index: 10;
+  position: relative;
+}
+
+.g5-item {
+  font-size: 52px;
+  animation: itemAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  filter: drop-shadow(0 4px 8px rgba(0,0,0,0.15));
+}
+
+@keyframes itemAppear {
+  from { transform: scale(0) rotate(-15deg); opacity: 0; }
+  to   { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+#g5-question-text {
+  font-size: 26px;
+  font-weight: 800;
+  color: #333;
+  letter-spacing: 2px;
+  text-align: center;
+  z-index: 10;
+  position: relative;
+}
+
+/* 数字選択ボタンエリア */
+#g5-choices {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  margin-top: 16px;
+  z-index: 10;
+  position: relative;
+}
+
+.g5-num-btn {
+  width: 88px;
+  height: 88px;
+  border-radius: 50%;
+  border: none;
+  background: linear-gradient(135deg, #ffffff, #e8f5e9);
+  font-size: 36px;
+  font-weight: 900;
+  color: #333;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.14);
+  touch-action: manipulation;
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.g5-num-btn:active {
+  transform: scale(0.93);
+  box-shadow: 0 3px 10px rgba(0,0,0,0.12);
+}
+
+.g5-num-btn.wrong-anim {
+  animation: gentleWobble 0.4s ease;
+}
+
+/* =====================================================
+   ユーティリティ・汎用
+===================================================== */
+
+/* フワっと戻るアニメ */
+@keyframes floatBack {
+  from { transform: scale(1.08); }
+  to   { transform: scale(1); }
+}
+
 </style>
 </head>
 <body>
-<div id="game-container">
+<div id="app">
 
-  <!-- 上部余白 -->
-  <div id="top-spacer"></div>
+  <!-- ===== ホーム画面 ===== -->
+  <div id="screen-home" class="screen active">
+    <h1 class="home-title">あそぼう！</h1>
+    <p class="home-subtitle">5つのゲーム</p>
 
-  <!-- 音量コントロール（左上） -->
-  <div id="volume-control">
-    <button id="volume-btn" aria-label="音量調整">🔊</button>
-    <div id="volume-panel">
-      <input id="volume-slider" type="range" min="0" max="100" value="70"
-             orient="vertical" aria-label="音量">
-      <span id="volume-pct">70%</span>
+    <div class="game-cards">
+      <!-- ゲーム1：かたちあわせ -->
+      <div class="game-card" onclick="startGame(1)" role="button" tabindex="0">
+        <span class="card-icon">🔷</span>
+        <div class="card-info">
+          <span class="card-name">かたちあわせ</span>
+          <span class="card-desc">かたちをぴったり はめよう</span>
+        </div>
+        <span class="card-arrow">›</span>
+      </div>
+
+      <!-- ゲーム2：あわをはじこう -->
+      <div class="game-card" onclick="startGame(2)" role="button" tabindex="0">
+        <span class="card-icon">🫧</span>
+        <div class="card-info">
+          <span class="card-name">あわをはじこう</span>
+          <span class="card-desc">いろのあわを ぽんぽんはじこう</span>
+        </div>
+        <span class="card-arrow">›</span>
+      </div>
+
+      <!-- ゲーム3：どうぶつだあれ？ -->
+      <div class="game-card" onclick="startGame(3)" role="button" tabindex="0">
+        <span class="card-icon">🐾</span>
+        <div class="card-info">
+          <span class="card-name">どうぶつだあれ？</span>
+          <span class="card-desc">なきごえをきいて こたえよう</span>
+        </div>
+        <span class="card-arrow">›</span>
+      </div>
+
+      <!-- ゲーム4：おなじのはどれ？ -->
+      <div class="game-card" onclick="startGame(4)" role="button" tabindex="0">
+        <span class="card-icon">🃏</span>
+        <div class="card-info">
+          <span class="card-name">おなじのはどれ？</span>
+          <span class="card-desc">めくってペアをさがそう</span>
+        </div>
+        <span class="card-arrow">›</span>
+      </div>
+
+      <!-- ゲーム5：いくつあるかな？ -->
+      <div class="game-card" onclick="startGame(5)" role="button" tabindex="0">
+        <span class="card-icon">🔢</span>
+        <div class="card-info">
+          <span class="card-name">いくつあるかな？</span>
+          <span class="card-desc">かずをかぞえて えらぼう</span>
+        </div>
+        <span class="card-arrow">›</span>
+      </div>
     </div>
   </div>
 
-  <!-- スコアエリア：⭐5つ段階的に光る -->
-  <div id="score-area">
-    <span class="score-star" id="star-0">⭐</span>
-    <span class="score-star" id="star-1">⭐</span>
-    <span class="score-star" id="star-2">⭐</span>
-    <span class="score-star" id="star-3">⭐</span>
-    <span class="score-star" id="star-4">⭐</span>
-    <!-- ハイスコアバッジ -->
-    <div id="highscore-badge">
-      <span class="hs-star">🏆</span>
-      <span id="highscore-num">0</span>
+  <!-- ===== ゲーム1：かたちあわせ ===== -->
+  <div id="screen-game1" class="screen">
+    <!-- 上部バー -->
+    <div class="game-topbar">
+      <button class="home-btn" onclick="goHome()" aria-label="ホームに戻る">🏠</button>
+      <div class="volume-control" id="g1-vol-ctrl">
+        <button class="volume-btn" id="g1-vol-btn" aria-label="音量">🔊</button>
+        <div class="volume-panel" id="g1-vol-panel">
+          <input class="volume-slider" id="g1-vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+          <span class="volume-pct" id="g1-vol-pct">70%</span>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <!-- レベルバッジ -->
-  <div id="level-badge">LV.1</div>
-
-  <!-- お題エリア -->
-  <div id="question-area">
-    <div id="draggable-shape">
-      <!-- SVGはJSで動的に挿入 -->
+    <!-- スコアエリア -->
+    <div id="g1-score-area">
+      <span class="score-star" id="g1-star-0">⭐</span>
+      <span class="score-star" id="g1-star-1">⭐</span>
+      <span class="score-star" id="g1-star-2">⭐</span>
+      <span class="score-star" id="g1-star-3">⭐</span>
+      <span class="score-star" id="g1-star-4">⭐</span>
+      <div id="g1-highscore-badge">
+        <span class="hs-star">🏆</span>
+        <span id="g1-highscore-num">0</span>
+      </div>
     </div>
+
+    <div id="g1-level-badge">LV.1</div>
+
+    <!-- お題 -->
+    <div id="g1-question-area">
+      <div id="g1-draggable-shape"></div>
+    </div>
+
+    <div id="g1-mid-spacer"></div>
+
+    <!-- シルエット枠 -->
+    <div id="g1-slots-area"></div>
   </div>
 
-  <!-- 中間スペーサー -->
-  <div id="mid-spacer"></div>
+  <!-- ===== ゲーム2：あわをはじこう ===== -->
+  <div id="screen-game2" class="screen">
+    <div class="game-topbar">
+      <button class="home-btn" onclick="goHome()" aria-label="ホームに戻る">🏠</button>
+      <div class="volume-control" id="g2-vol-ctrl">
+        <button class="volume-btn" id="g2-vol-btn" aria-label="音量">🔊</button>
+        <div class="volume-panel" id="g2-vol-panel">
+          <input class="volume-slider" id="g2-vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+          <span class="volume-pct" id="g2-vol-pct">70%</span>
+        </div>
+      </div>
+    </div>
 
-  <!-- シルエット枠エリア -->
-  <div id="slots-area">
-    <!-- スロットカードはJSで動的に生成 -->
+    <!-- お題表示 -->
+    <div id="g2-mission">
+      <span id="g2-mission-text">ゲームをよみこみ中...</span>
+      <span id="g2-count-display">0 / 0</span>
+    </div>
+
+    <!-- 泡が漂うエリア -->
+    <div id="g2-bubble-area"></div>
   </div>
 
-</div>
+  <!-- ===== ゲーム3：どうぶつだあれ？ ===== -->
+  <div id="screen-game3" class="screen">
+    <div class="game-topbar">
+      <button class="home-btn" onclick="goHome()" aria-label="ホームに戻る">🏠</button>
+      <div class="volume-control" id="g3-vol-ctrl">
+        <button class="volume-btn" id="g3-vol-btn" aria-label="音量">🔊</button>
+        <div class="volume-panel" id="g3-vol-panel">
+          <input class="volume-slider" id="g3-vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+          <span class="volume-pct" id="g3-vol-pct">70%</span>
+        </div>
+      </div>
+    </div>
 
-<!-- 正解エフェクトオーバーレイ -->
+    <div id="g3-header">なんの どうぶつかな？</div>
+    <div id="g3-progress"></div>
+
+    <!-- 問題カード（？→正解後は動物絵文字） -->
+    <div id="g3-question-card">❓</div>
+
+    <!-- 鳴き声ボタン -->
+    <button id="g3-sound-btn">🔊 なきごえをきく</button>
+
+    <!-- 3択 -->
+    <div id="g3-choices"></div>
+  </div>
+
+  <!-- ===== ゲーム4：おなじのはどれ？ ===== -->
+  <div id="screen-game4" class="screen">
+    <div class="game-topbar">
+      <button class="home-btn" onclick="goHome()" aria-label="ホームに戻る">🏠</button>
+      <div class="volume-control" id="g4-vol-ctrl">
+        <button class="volume-btn" id="g4-vol-btn" aria-label="音量">🔊</button>
+        <div class="volume-panel" id="g4-vol-panel">
+          <input class="volume-slider" id="g4-vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+          <span class="volume-pct" id="g4-vol-pct">70%</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="g4-header">
+      <div id="g4-pairs-left">あと ○ ペア</div>
+      <div id="g4-level-text">レベル 1</div>
+    </div>
+
+    <!-- カードグリッド -->
+    <div id="g4-grid"></div>
+  </div>
+
+  <!-- ===== ゲーム5：いくつあるかな？ ===== -->
+  <div id="screen-game5" class="screen">
+    <div class="game-topbar">
+      <button class="home-btn" onclick="goHome()" aria-label="ホームに戻る">🏠</button>
+      <div class="volume-control" id="g5-vol-ctrl">
+        <button class="volume-btn" id="g5-vol-btn" aria-label="音量">🔊</button>
+        <div class="volume-panel" id="g5-vol-panel">
+          <input class="volume-slider" id="g5-vol-slider" type="range" min="0" max="100" value="70" orient="vertical">
+          <span class="volume-pct" id="g5-vol-pct">70%</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="g5-header">いくつ あるかな？</div>
+    <div id="g5-progress"></div>
+
+    <!-- アイテム表示エリア -->
+    <div id="g5-items-area"></div>
+
+    <div id="g5-question-text">かぞえてみよう！</div>
+
+    <!-- 数字ボタン -->
+    <div id="g5-choices"></div>
+  </div>
+
+</div><!-- /#app -->
+
+<!-- 共通：正解エフェクトオーバーレイ -->
 <div id="correct-overlay">
   <div id="big-star">⭐</div>
 </div>
 
-<!-- レベルアップオーバーレイ -->
+<!-- ゲーム1専用：レベルアップオーバーレイ -->
 <div id="levelup-overlay">
   <div id="levelup-content">
     <div id="levelup-stars">⭐⭐⭐</div>
@@ -535,742 +1160,175 @@
 'use strict';
 
 /* =====================================================
-   定数・設定
+   グローバル音量管理
 ===================================================== */
-
-// 形の種類
-const SHAPES = ['circle', 'square', 'triangle', 'star'];
-
-// 6色の定義（パステルよりも鮮やかに3歳児向け）
-const COLORS = {
-  red:    { fill: '#FF4444', stroke: '#CC0000', label: 'あか' },
-  blue:   { fill: '#3388FF', stroke: '#0055CC', label: 'あお' },
-  yellow: { fill: '#FFD700', stroke: '#CC9900', label: 'きいろ' },
-  green:  { fill: '#33CC66', stroke: '#009933', label: 'みどり' },
-  pink:   { fill: '#FF66BB', stroke: '#CC3388', label: 'ぴんく' },
-  orange: { fill: '#FF8833', stroke: '#CC5500', label: 'オレンジ' },
-};
-
-const COLOR_KEYS = Object.keys(COLORS);
-
-// シルエット枠の色（薄いグレー）
-const SILHOUETTE_FILL   = 'rgba(180,190,200,0.45)';
-const SILHOUETTE_STROKE = 'rgba(140,155,175,0.7)';
-
-// スナップ判定距離（形サイズの50%目安：120px）
-const SNAP_DISTANCE = 120;
-
-// パルス光を出すヒント距離（80px以内でふわっと光る）
-const NEAR_GLOW_DISTANCE = 80;
-
-// レベル設定
-const LEVEL_CONFIG = {
-  1: { slotCount: 3, shapes: ['circle','square','triangle'] },
-  2: { slotCount: 4, shapes: ['circle','square','triangle','star'] },
-};
-
-/* =====================================================
-   ゲーム状態
-===================================================== */
-let state = {
-  level:         1,       // 現在のレベル
-  score:         0,       // 現在セッションのスコア（正解数）
-  levelProgress: 0,       // このレベル内での正解数（5でレベルアップ）
-  highscore:     0,       // ハイスコア
-  currentShape:  '',      // 現在のお題の形
-  currentColor:  '',      // 現在のお題の色キー
-  slots:         [],      // 現在のスロット形リスト
-  isDragging:    false,   // ドラッグ中フラグ
-  blocked:       false,   // アニメ中の入力ブロック
-};
-
-/* =====================================================
-   音量管理
-===================================================== */
-
-// 音量（0.0〜1.0）
 let masterVolume = 0.70;
 
-/**
- * localStorageから音量を読み込む
- */
+/** localStorageから音量を読み込む */
 function loadVolume() {
   try {
-    const saved = localStorage.getItem('shapePuzzleVolume');
-    if (saved !== null) {
-      masterVolume = Math.max(0, Math.min(1, parseFloat(saved)));
-    }
+    const saved = localStorage.getItem('kidGameVolume');
+    if (saved !== null) masterVolume = Math.max(0, Math.min(1, parseFloat(saved)));
   } catch(e) {}
 }
 
-/**
- * localStorageに音量を保存する
- */
+/** localStorageに音量を保存 */
 function saveVolume() {
-  try {
-    localStorage.setItem('shapePuzzleVolume', String(masterVolume));
-  } catch(e) {}
+  try { localStorage.setItem('kidGameVolume', String(masterVolume)); } catch(e) {}
 }
 
 /**
- * 音量UIを初期化しイベントをバインドする
+ * 音量コントロールをバインドする
+ * @param {string} btnId - ボタンID
+ * @param {string} panelId - パネルID
+ * @param {string} sliderId - スライダーID
+ * @param {string} pctId - パーセント表示ID
  */
-function initVolumeControl() {
-  loadVolume();
+function bindVolumeControl(btnId, panelId, sliderId, pctId) {
+  const btn    = document.getElementById(btnId);
+  const panel  = document.getElementById(panelId);
+  const slider = document.getElementById(sliderId);
+  const pct    = document.getElementById(pctId);
+  if (!btn || !panel || !slider || !pct) return;
 
-  const btn    = document.getElementById('volume-btn');
-  const panel  = document.getElementById('volume-panel');
-  const slider = document.getElementById('volume-slider');
-  const pct    = document.getElementById('volume-pct');
-
-  // スライダーの初期値を設定
+  // 初期値反映
   const initVal = Math.round(masterVolume * 100);
   slider.value = initVal;
   pct.textContent = initVal + '%';
-  updateVolumeIcon(initVal);
+  updateVolumeIcon(btn, initVal);
 
-  // ボタンタップでパネルの開閉
   btn.addEventListener('click', e => {
     e.stopPropagation();
-    // AudioContextをユーザー操作で起動（iOS対策）
-    getAudioCtx();
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
+    ensureAudioCtx();
     panel.classList.toggle('open');
   });
 
-  // スライダー操作で音量変更
   slider.addEventListener('input', () => {
     const val = parseInt(slider.value, 10);
     masterVolume = val / 100;
     pct.textContent = val + '%';
-    updateVolumeIcon(val);
+    updateVolumeIcon(btn, val);
     saveVolume();
-  });
-
-  // パネル外タップで閉じる
-  document.addEventListener('click', e => {
-    if (!document.getElementById('volume-control').contains(e.target)) {
-      panel.classList.remove('open');
-    }
+    // 全スライダーに同期
+    syncAllVolumePanels(val);
   });
 }
 
-/**
- * 音量に応じてアイコンを切り替える（ミュート時は🔇）
- */
-function updateVolumeIcon(val) {
-  const btn = document.getElementById('volume-btn');
-  if (val === 0) {
-    btn.textContent = '🔇';
-  } else {
-    btn.textContent = '🔊';
-  }
+/** 全音量UIを同期する */
+function syncAllVolumePanels(val) {
+  ['g1','g2','g3','g4','g5'].forEach(prefix => {
+    const s = document.getElementById(`${prefix}-vol-slider`);
+    const p = document.getElementById(`${prefix}-vol-pct`);
+    const b = document.getElementById(`${prefix}-vol-btn`);
+    if (s) s.value = val;
+    if (p) p.textContent = val + '%';
+    if (b) updateVolumeIcon(b, val);
+  });
 }
+
+/** 音量アイコンを更新 */
+function updateVolumeIcon(btn, val) {
+  if (!btn) return;
+  btn.textContent = val === 0 ? '🔇' : '🔊';
+}
+
+/** パネル外クリックで全パネルを閉じる */
+document.addEventListener('click', () => {
+  document.querySelectorAll('.volume-panel').forEach(p => p.classList.remove('open'));
+});
 
 /* =====================================================
-   SVG 描画関数
+   Web Audio API
 ===================================================== */
-
-/**
- * 形のSVGコンテンツを返す（viewBox="0 0 100 100"前提）
- * @param {string} shape  - 形の種類
- * @param {string} fill   - 塗り色
- * @param {string} stroke - 枠線色
- * @param {boolean} silhouette - シルエット枠モード
- */
-function shapeSVGContent(shape, fill, stroke, silhouette = false) {
-  const f = silhouette ? SILHOUETTE_FILL   : fill;
-  const s = silhouette ? SILHOUETTE_STROKE : stroke;
-  const sw = silhouette ? 5 : 3; // 枠線の太さ
-
-  switch (shape) {
-    case 'circle':
-      return `<circle cx="50" cy="50" r="42"
-        fill="${f}" stroke="${s}" stroke-width="${sw}"/>`;
-
-    case 'square':
-      return `<rect x="8" y="8" width="84" height="84" rx="10" ry="10"
-        fill="${f}" stroke="${s}" stroke-width="${sw}"/>`;
-
-    case 'triangle': {
-      // 正三角形（重心が中央付近）
-      const pts = '50,6 94,90 6,90';
-      return `<polygon points="${pts}"
-        fill="${f}" stroke="${s}" stroke-width="${sw}" stroke-linejoin="round"/>`;
-    }
-
-    case 'star': {
-      // 5点星（外半径44、内半径18）
-      const starPts = starPoints(50, 50, 44, 18, 5);
-      return `<polygon points="${starPts}"
-        fill="${f}" stroke="${s}" stroke-width="${sw}" stroke-linejoin="round"/>`;
-    }
-
-    default:
-      return '';
-  }
-}
-
-/**
- * 5点星の座標を生成
- */
-function starPoints(cx, cy, outerR, innerR, points) {
-  let pts = [];
-  for (let i = 0; i < points * 2; i++) {
-    const angle = (Math.PI / points) * i - Math.PI / 2;
-    const r = i % 2 === 0 ? outerR : innerR;
-    pts.push(`${(cx + Math.cos(angle) * r).toFixed(2)},${(cy + Math.sin(angle) * r).toFixed(2)}`);
-  }
-  return pts.join(' ');
-}
-
-/**
- * SVG要素の文字列全体を返す
- */
-function makeSVG(shape, fill, stroke, size = 200, silhouette = false) {
-  const content = shapeSVGContent(shape, fill, stroke, silhouette);
-  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}"
-    xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">
-    ${content}
-  </svg>`;
-}
-
-/* =====================================================
-   Web Audio API 効果音
-===================================================== */
-
 let audioCtx = null;
 
-function getAudioCtx() {
+function ensureAudioCtx() {
   if (!audioCtx) {
-    try {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    } catch(e) {}
+    try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {}
   }
+  if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
 
-/**
- * 正解音：明るいピコピコ3音（ド・ミ・ソ）
- * masterVolumeを乗算して出力
- */
+/** 正解音：明るいピコピコ3音（ド・ミ・ソ） */
 function playCorrectSound() {
-  const ctx = getAudioCtx();
+  const ctx = ensureAudioCtx();
   if (!ctx || masterVolume === 0) return;
-
-  const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+  const notes = [523.25, 659.25, 783.99];
   notes.forEach((freq, i) => {
     const osc  = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.connect(gain);
     gain.connect(ctx.destination);
-
     osc.type = 'square';
     osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
-
-    // 音量にmasterVolumeを反映（基準0.18）
     const vol = 0.18 * masterVolume;
     gain.gain.setValueAtTime(vol, ctx.currentTime + i * 0.12);
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.18);
-
     osc.start(ctx.currentTime + i * 0.12);
     osc.stop(ctx.currentTime  + i * 0.12 + 0.2);
   });
 }
 
-/**
- * 不正解音：柔らかい低めの短いトン音（Web Audio APIで生成）
- * 赤点滅・シェイクなし。音量は小さく短く。
- */
+/** 不正解音：柔らかい低音のトン */
 function playWrongSound() {
-  const ctx = getAudioCtx();
+  const ctx = ensureAudioCtx();
   if (!ctx || masterVolume === 0) return;
-
   const osc  = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.connect(gain);
   gain.connect(ctx.destination);
-
-  // サイン波で柔らかい音にする（sawtooth → sine に変更）
   osc.type = 'sine';
-  osc.frequency.setValueAtTime(220, ctx.currentTime);       // A3（低めで穏やか）
+  osc.frequency.setValueAtTime(220, ctx.currentTime);
   osc.frequency.linearRampToValueAtTime(180, ctx.currentTime + 0.15);
-
-  // 短く小さく（0.15秒）
   const vol = 0.08 * masterVolume;
   gain.gain.setValueAtTime(vol, ctx.currentTime);
   gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
-
   osc.start(ctx.currentTime);
   osc.stop(ctx.currentTime + 0.16);
 }
 
-/* =====================================================
-   スコア・ハイスコア管理
-===================================================== */
-
-function loadHighscore() {
-  try {
-    state.highscore = parseInt(localStorage.getItem('shapePuzzleHighscore') || '0', 10);
-  } catch(e) {
-    state.highscore = 0;
-  }
-}
-
-function saveHighscore() {
-  try {
-    localStorage.setItem('shapePuzzleHighscore', String(state.highscore));
-  } catch(e) {}
-}
-
-function updateScoreDisplay() {
-  // ⭐を段階的に点灯（levelProgress が 0〜5 の間）
-  const prog = Math.min(state.levelProgress, 5);
-  for (let i = 0; i < 5; i++) {
-    const el = document.getElementById(`star-${i}`);
-    if (i < prog) {
-      el.classList.add('lit');
-    } else {
-      el.classList.remove('lit');
-    }
-  }
-
-  // ハイスコア更新
-  if (state.score > state.highscore) {
-    state.highscore = state.score;
-    saveHighscore();
-  }
-  document.getElementById('highscore-num').textContent = state.highscore;
-  document.getElementById('level-badge').textContent = `LV.${state.level}`;
+/** ポップ音：高めの短いビープ */
+function playPopSound() {
+  const ctx = ensureAudioCtx();
+  if (!ctx || masterVolume === 0) return;
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, ctx.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.12);
+  const vol = 0.22 * masterVolume;
+  gain.gain.setValueAtTime(vol, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.12);
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.14);
 }
 
 /* =====================================================
-   問題生成
+   共通：正解エフェクト（紙吹雪＋⭐）
 ===================================================== */
-
-/**
- * ランダムな要素をリストから取得
- */
-function randFrom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-/**
- * 新しいお題と選択肢スロットを生成
- */
-function generateQuestion() {
-  const cfg = LEVEL_CONFIG[state.level] || LEVEL_CONFIG[2];
-
-  // お題のかたちと色をランダムに選ぶ
-  // 直前と同じかたちが連続しないようにシャッフル
-  let newShape;
-  do {
-    newShape = randFrom(cfg.shapes);
-  } while (cfg.shapes.length > 1 && newShape === state.currentShape);
-
-  state.currentShape = newShape;
-  state.currentColor = randFrom(COLOR_KEYS);
-
-  // スロットの配置：正解の形を含むシャッフルリスト
-  const otherShapes = cfg.shapes.filter(s => s !== state.currentShape);
-  // シャッフル
-  const shuffled = otherShapes.sort(() => Math.random() - 0.5);
-  // 正解を混ぜてランダム位置に挿入
-  const insertPos = Math.floor(Math.random() * cfg.slotCount);
-  shuffled.splice(insertPos, 0, state.currentShape);
-  state.slots = shuffled.slice(0, cfg.slotCount);
-}
-
-/* =====================================================
-   DOM 構築
-===================================================== */
-
-function renderQuestion() {
-  const el = document.getElementById('draggable-shape');
-  const color = COLORS[state.currentColor];
-
-  // SVGを挿入してアニメリセット
-  el.innerHTML = makeSVG(state.currentShape, color.fill, color.stroke, 200);
-
-  // アニメをリセットして再発火
-  el.style.animation = 'none';
-  void el.offsetWidth; // リフロー
-  el.style.animation = '';
-
-  // ドラッグ中スタイルをリセット
-  el.classList.remove('dragging');
-  el.style.left   = '';
-  el.style.top    = '';
-  el.style.position = '';
-  el.style.transform = '';
-  el.style.opacity = '';
-
-  // 問題が表示されてから8秒後にヒントを出す
-  resetHintTimer();
-}
-
-function renderSlots() {
-  const area = document.getElementById('slots-area');
-  area.innerHTML = '';
-
-  const isSmall = state.level >= 2;
-  const svgSize = isSmall ? 70 : 80;
-
-  state.slots.forEach((shape, idx) => {
-    const card = document.createElement('div');
-    card.className = `slot-card${isSmall ? ' small' : ''}`;
-    card.dataset.shape = shape;
-    card.dataset.idx   = idx;
-    card.innerHTML = makeSVG(shape, SILHOUETTE_FILL, SILHOUETTE_STROKE, svgSize, true);
-    area.appendChild(card);
-  });
-}
-
-/* =====================================================
-   放置ヒントタイマー管理
-===================================================== */
-
-let hintTimerQuestion = null;   // 問題表示後8秒のタイマー
-let hintTimerDrag     = null;   // ドラッグ開始後5秒のタイマー
-let hintActive        = false;  // ヒント表示中フラグ
-
-/**
- * ヒントタイマーをリセット（問題切替時に呼ぶ）
- * 問題表示から8秒後にヒントを表示する
- */
-function resetHintTimer() {
-  clearHintTimers();
-  hintActive = false;
-  // 問題が表示されてから8秒後にヒント発動
-  hintTimerQuestion = setTimeout(() => {
-    showHint();
-  }, 8000);
-}
-
-/**
- * ドラッグ開始時のヒントタイマー（5秒後）
- * ドラッグ開始後5秒間操作しない場合もヒントを出す
- */
-function startDragHintTimer() {
-  clearTimeout(hintTimerDrag);
-  // ドラッグ中は問題タイマーを一時停止
-  clearTimeout(hintTimerQuestion);
-  hintActive = false;
-  hideHint();
-  // ドラッグ開始から5秒後にヒント
-  hintTimerDrag = setTimeout(() => {
-    showHint();
-  }, 5000);
-}
-
-/**
- * 全タイマーをクリア
- */
-function clearHintTimers() {
-  clearTimeout(hintTimerQuestion);
-  clearTimeout(hintTimerDrag);
-}
-
-/**
- * 正解スロットにヒント（ゆっくりパルス光）を表示する
- */
-function showHint() {
-  hintActive = true;
-  // 正解スロットを探してhint-glowクラスを付与
-  document.querySelectorAll('.slot-card').forEach(card => {
-    if (card.dataset.shape === state.currentShape) {
-      card.classList.add('hint-glow');
-    }
-  });
-}
-
-/**
- * ヒントを非表示にする
- */
-function hideHint() {
-  hintActive = false;
-  document.querySelectorAll('.slot-card').forEach(card => {
-    card.classList.remove('hint-glow');
-  });
-}
-
-/* =====================================================
-   ドラッグ＆ドロップ（マウス＋タッチ共通）
-===================================================== */
-
-const dragEl = document.getElementById('draggable-shape');
-
-// ドラッグ開始時点の元位置（ふわっと戻るアニメ用）
-let dragOriginRect = null;
-
-// ドラッグ開始時の共通処理
-function onDragStart(clientX, clientY) {
-  if (state.isDragging || state.blocked) return;
-
-  // AudioContextをユーザー操作で起動（iOS対策）
-  getAudioCtx();
-  if (audioCtx && audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-
-  // ドラッグ前の位置を記録（戻るアニメ用）
-  dragOriginRect = dragEl.getBoundingClientRect();
-
-  state.isDragging = true;
-
-  // ヒントを非表示にしてドラッグヒントタイマー開始
-  hideHint();
-  startDragHintTimer();
-
-  // お題を fixed 配置にして指（中心）に追従させる
-  dragEl.classList.add('dragging');
-  dragEl.style.position = 'fixed';
-  moveDragEl(clientX, clientY);
-}
-
-// ドラッグ中の位置更新
-function onDragMove(clientX, clientY) {
-  if (!state.isDragging) return;
-  moveDragEl(clientX, clientY);
-
-  // スロットカードのホバー・パルス光ハイライト
-  document.querySelectorAll('.slot-card').forEach(card => {
-    const dist = distToCenter(card, clientX, clientY);
-    // 完全ホバー：スナップ判定距離内
-    if (dist < SNAP_DISTANCE) {
-      card.classList.add('hover');
-      card.classList.remove('near-glow');
-    // 近接パルス光：80px以内でふわっと光る
-    } else if (dist < NEAR_GLOW_DISTANCE + SNAP_DISTANCE) {
-      card.classList.remove('hover');
-      card.classList.add('near-glow');
-    } else {
-      card.classList.remove('hover');
-      card.classList.remove('near-glow');
-    }
-  });
-}
-
-// ドロップ時の共通処理
-function onDragEnd(clientX, clientY) {
-  if (!state.isDragging) return;
-  state.isDragging = false;
-
-  // 全ホバー・パルス光解除
-  document.querySelectorAll('.slot-card').forEach(c => {
-    c.classList.remove('hover');
-    c.classList.remove('near-glow');
-  });
-
-  // ドラッグのヒントタイマーをクリア
-  clearTimeout(hintTimerDrag);
-
-  // 最近傍スロットを探す
-  let nearest = null;
-  let nearDist = Infinity;
-  document.querySelectorAll('.slot-card').forEach(card => {
-    const d = distToCenter(card, clientX, clientY);
-    if (d < nearDist) {
-      nearDist = d;
-      nearest  = card;
-    }
-  });
-
-  if (nearest && nearDist <= SNAP_DISTANCE) {
-    // スナップ範囲内 → 正解/不正解判定
-    if (nearest.dataset.shape === state.currentShape) {
-      onCorrect();
-    } else {
-      onWrong();
-    }
-  } else {
-    // 範囲外 → お題をふわっと元の位置に戻す
-    returnDragEl();
-  }
-}
-
-// お題を指の位置に移動
-// clientX/Y からドラッグ開始オフセットを引いて「指のちょうど下」に中心を合わせる
-function moveDragEl(clientX, clientY) {
-  // 中心を指の位置に合わせる（SVGは 200px なので 100px オフセット）
-  const cx = clientX - 100;
-  const cy = clientY - 100;
-  dragEl.style.left      = `${cx}px`;
-  dragEl.style.top       = `${cy}px`;
-  dragEl.style.transform = 'scale(1.08)';
-}
-
-// お題を元の表示位置に即座に戻す（正解時など）
-function resetDragEl() {
-  dragEl.classList.remove('dragging');
-  dragEl.classList.remove('return-anim');
-  dragEl.style.position  = '';
-  dragEl.style.left      = '';
-  dragEl.style.top       = '';
-  dragEl.style.transform = '';
-}
-
-/**
- * お題をふわっと元の位置にアニメーションで戻す（不正解・範囲外ドロップ時）
- * 0.4秒かけてゆっくり戻る
- */
-function returnDragEl() {
-  if (!dragOriginRect) {
-    resetDragEl();
-    return;
-  }
-
-  // 現在 fixed 位置を維持したまま transition を有効にする
-  dragEl.classList.add('return-anim');
-
-  // ドラッグ前の位置（fixed座標に変換）へ移動
-  const targetLeft = dragOriginRect.left;
-  const targetTop  = dragOriginRect.top;
-
-  // わずかに遅延してtransitionを発火させる（ブラウザがleftを認識してから）
-  requestAnimationFrame(() => {
-    dragEl.style.left      = `${targetLeft}px`;
-    dragEl.style.top       = `${targetTop}px`;
-    dragEl.style.transform = 'scale(1)';
-
-    // アニメ完了後にスタイルをリセット
-    setTimeout(() => {
-      resetDragEl();
-      // 放置ヒントタイマーを再開
-      hintTimerQuestion = setTimeout(() => {
-        showHint();
-      }, 5000);
-    }, 420);
-  });
-}
-
-// 要素の中心とポインタ座標の距離
-function distToCenter(el, cx, cy) {
-  const rect = el.getBoundingClientRect();
-  const elCx = rect.left + rect.width  / 2;
-  const elCy = rect.top  + rect.height / 2;
-  return Math.hypot(cx - elCx, cy - elCy);
-}
-
-/* ---- マウスイベント ---- */
-dragEl.addEventListener('mousedown', e => {
-  e.preventDefault();
-  onDragStart(e.clientX, e.clientY);
-});
-
-document.addEventListener('mousemove', e => {
-  onDragMove(e.clientX, e.clientY);
-});
-
-document.addEventListener('mouseup', e => {
-  onDragEnd(e.clientX, e.clientY);
-});
-
-/* ---- タッチイベント ---- */
-dragEl.addEventListener('touchstart', e => {
-  e.preventDefault();
-  const t = e.touches[0];
-  onDragStart(t.clientX, t.clientY);
-}, { passive: false });
-
-document.addEventListener('touchmove', e => {
-  if (!state.isDragging) return;
-  e.preventDefault();
-  const t = e.touches[0];
-  onDragMove(t.clientX, t.clientY);
-}, { passive: false });
-
-document.addEventListener('touchend', e => {
-  const t = e.changedTouches[0];
-  onDragEnd(t.clientX, t.clientY);
-});
-
-/* =====================================================
-   正解・不正解処理
-===================================================== */
-
-function onCorrect() {
-  if (state.blocked) return;
-  state.blocked = true;
-
-  // ヒントタイマーをリセット（問題が変わるため）
-  clearHintTimers();
-  hideHint();
-
-  playCorrectSound();
-
-  // スコア更新
-  state.score++;
-  state.levelProgress++;
-  updateScoreDisplay();
-
-  // お題を非表示
-  resetDragEl();
-  dragEl.style.opacity = '0';
-
-  // 正解エフェクト表示
-  showCorrectEffect(() => {
-    dragEl.style.opacity = '';
-    state.blocked = false;
-
-    // 5問でレベルアップ判定
-    if (state.levelProgress >= 5 && state.level < 2) {
-      doLevelUp();
-    } else {
-      nextQuestion();
-    }
-  });
-}
-
-/**
- * 不正解処理：音はなし（柔らかいトン音のみ）、赤点滅・シェイクなし
- * お題がふわっと元の位置に戻る
- */
-function onWrong() {
-  if (state.blocked) return;
-  state.blocked = true;
-
-  // 柔らかい短いトン音を鳴らす
-  playWrongSound();
-
-  // お題をふわっと元の位置に戻す（0.4秒）
-  returnDragEl();
-
-  // ブロックを解除（戻るアニメ完了後）
-  setTimeout(() => {
-    state.blocked = false;
-  }, 440);
-}
-
-/* =====================================================
-   正解エフェクト：紙吹雪 + キラキラ + 大きな⭐
-===================================================== */
-
 function showCorrectEffect(callback) {
   const overlay = document.getElementById('correct-overlay');
   overlay.classList.add('active');
-
-  // 紙吹雪を生成
   spawnConfetti(overlay);
-  // キラキラを生成
   spawnSparkles(overlay);
+
+  // big-starのアニメをリセット
+  const bs = document.getElementById('big-star');
+  bs.style.animation = 'none';
+  void bs.offsetWidth;
+  bs.style.animation = '';
 
   setTimeout(() => {
     overlay.classList.remove('active');
-    // 紙吹雪・キラキラを掃除
     overlay.querySelectorAll('.confetti, .sparkle').forEach(el => el.remove());
-    // big-starのアニメリセット
-    const bs = document.getElementById('big-star');
-    bs.style.animation = 'none';
-    void bs.offsetWidth;
-    bs.style.animation = '';
-    callback();
-  }, 900);
+    if (callback) callback();
+  }, 950);
 }
 
-// 紙吹雪（30枚）
+/** 紙吹雪を生成（30枚） */
 function spawnConfetti(parent) {
   const colors = ['#FF4444','#3388FF','#FFD700','#33CC66','#FF66BB','#FF8833','#ffffff'];
   for (let i = 0; i < 30; i++) {
@@ -1290,20 +1348,18 @@ function spawnConfetti(parent) {
   }
 }
 
-// キラキラ（12個）
+/** キラキラを生成（12個） */
 function spawnSparkles(parent) {
   const emojis = ['✨','⭐','💫','🌟'];
   for (let i = 0; i < 12; i++) {
     const el = document.createElement('div');
     el.className = 'sparkle';
     el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
-    el.style.left     = `${20 + Math.random() * 60}%`;
-    el.style.top      = `${20 + Math.random() * 60}%`;
+    el.style.left  = `${20 + Math.random() * 60}%`;
+    el.style.top   = `${20 + Math.random() * 60}%`;
     const angle = Math.random() * Math.PI * 2;
     const dist  = 60 + Math.random() * 100;
-    const tx = Math.cos(angle) * dist;
-    const ty = Math.sin(angle) * dist;
-    el.style.setProperty('--tx', `translate(${tx}px, ${ty}px) scale(0.2)`);
+    el.style.setProperty('--tx', `translate(${Math.cos(angle)*dist}px, ${Math.sin(angle)*dist}px) scale(0.2)`);
     el.style.fontSize = `${22 + Math.random() * 20}px`;
     el.style.animationDuration = `${0.5 + Math.random() * 0.4}s`;
     el.style.animationDelay   = `${Math.random() * 0.1}s`;
@@ -1312,49 +1368,995 @@ function spawnSparkles(parent) {
 }
 
 /* =====================================================
-   レベルアップ処理
+   画面切り替え
+===================================================== */
+let currentScreen = 'home';
+
+/** ゲームを開始（画面切り替え） */
+function startGame(num) {
+  ensureAudioCtx();
+  showScreen('game' + num);
+
+  // 各ゲームの初期化
+  if (num === 1) initGame1();
+  if (num === 2) initGame2();
+  if (num === 3) initGame3();
+  if (num === 4) initGame4();
+  if (num === 5) initGame5();
+}
+
+/** ホーム画面に戻る */
+function goHome() {
+  // ゲーム2のタイマーをクリア
+  if (g2State) {
+    g2State.bubbles.forEach(b => { if (b.el && b.el.parentNode) b.el.parentNode.removeChild(b.el); });
+    g2State.bubbles = [];
+    if (g2State.spawnTimer) clearInterval(g2State.spawnTimer);
+  }
+  // ゲーム3の音声を止める
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+
+  showScreen('home');
+}
+
+/** 指定画面をアクティブにする */
+function showScreen(name) {
+  currentScreen = name;
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('screen-' + name);
+  if (target) target.classList.add('active');
+  // 全パネルを閉じる
+  document.querySelectorAll('.volume-panel').forEach(p => p.classList.remove('open'));
+}
+
+/* =====================================================
+   ユーティリティ
+===================================================== */
+function randFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+/* =====================================================
+   ゲーム1：かたちあわせ
 ===================================================== */
 
-function doLevelUp() {
-  state.level = 2;
-  state.levelProgress = 0;
-  updateScoreDisplay();
+// 形の種類と色の定義（既存コードそのまま）
+const G1_SHAPES = ['circle', 'square', 'triangle', 'star'];
+const G1_COLORS = {
+  red:    { fill: '#FF4444', stroke: '#CC0000', label: 'あか' },
+  blue:   { fill: '#3388FF', stroke: '#0055CC', label: 'あお' },
+  yellow: { fill: '#FFD700', stroke: '#CC9900', label: 'きいろ' },
+  green:  { fill: '#33CC66', stroke: '#009933', label: 'みどり' },
+  pink:   { fill: '#FF66BB', stroke: '#CC3388', label: 'ぴんく' },
+  orange: { fill: '#FF8833', stroke: '#CC5500', label: 'オレンジ' },
+};
+const G1_COLOR_KEYS    = Object.keys(G1_COLORS);
+const SILHOUETTE_FILL   = 'rgba(180,190,200,0.45)';
+const SILHOUETTE_STROKE = 'rgba(140,155,175,0.7)';
+const SNAP_DISTANCE     = 120;
+const NEAR_GLOW_DIST    = 80;
 
+const G1_LEVEL_CONFIG = {
+  1: { slotCount: 3, shapes: ['circle','square','triangle'] },
+  2: { slotCount: 4, shapes: ['circle','square','triangle','star'] },
+};
+
+let g1 = {
+  level: 1, score: 0, levelProgress: 0, highscore: 0,
+  currentShape: '', currentColor: '',
+  slots: [], isDragging: false, blocked: false,
+};
+
+let g1DragOriginRect = null;
+let g1HintTimerQ = null, g1HintTimerD = null, g1HintActive = false;
+
+// SVG生成ヘルパー
+function g1ShapeSVGContent(shape, fill, stroke, silhouette = false) {
+  const f  = silhouette ? SILHOUETTE_FILL   : fill;
+  const s  = silhouette ? SILHOUETTE_STROKE : stroke;
+  const sw = silhouette ? 5 : 3;
+  switch (shape) {
+    case 'circle':
+      return `<circle cx="50" cy="50" r="42" fill="${f}" stroke="${s}" stroke-width="${sw}"/>`;
+    case 'square':
+      return `<rect x="8" y="8" width="84" height="84" rx="10" ry="10" fill="${f}" stroke="${s}" stroke-width="${sw}"/>`;
+    case 'triangle': {
+      return `<polygon points="50,6 94,90 6,90" fill="${f}" stroke="${s}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    }
+    case 'star': {
+      const pts = g1StarPoints(50,50,44,18,5);
+      return `<polygon points="${pts}" fill="${f}" stroke="${s}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    }
+    default: return '';
+  }
+}
+
+function g1StarPoints(cx, cy, outerR, innerR, points) {
+  let pts = [];
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (Math.PI / points) * i - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    pts.push(`${(cx + Math.cos(angle)*r).toFixed(2)},${(cy + Math.sin(angle)*r).toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
+
+function g1MakeSVG(shape, fill, stroke, size = 200, silhouette = false) {
+  const content = g1ShapeSVGContent(shape, fill, stroke, silhouette);
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">${content}</svg>`;
+}
+
+function g1LoadHighscore() {
+  try { g1.highscore = parseInt(localStorage.getItem('shapePuzzleHighscore') || '0', 10); } catch(e) { g1.highscore = 0; }
+}
+
+function g1SaveHighscore() {
+  try { localStorage.setItem('shapePuzzleHighscore', String(g1.highscore)); } catch(e) {}
+}
+
+function g1UpdateScoreDisplay() {
+  const prog = Math.min(g1.levelProgress, 5);
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById(`g1-star-${i}`);
+    if (!el) continue;
+    if (i < prog) el.classList.add('lit'); else el.classList.remove('lit');
+  }
+  if (g1.score > g1.highscore) { g1.highscore = g1.score; g1SaveHighscore(); }
+  const hn = document.getElementById('g1-highscore-num');
+  const lb = document.getElementById('g1-level-badge');
+  if (hn) hn.textContent = g1.highscore;
+  if (lb) lb.textContent = `LV.${g1.level}`;
+}
+
+function g1GenerateQuestion() {
+  const cfg = G1_LEVEL_CONFIG[g1.level] || G1_LEVEL_CONFIG[2];
+  let newShape;
+  do { newShape = randFrom(cfg.shapes); } while (cfg.shapes.length > 1 && newShape === g1.currentShape);
+  g1.currentShape = newShape;
+  g1.currentColor = randFrom(G1_COLOR_KEYS);
+
+  const otherShapes = cfg.shapes.filter(s => s !== g1.currentShape);
+  const shuffled    = otherShapes.sort(() => Math.random() - 0.5);
+  const insertPos   = Math.floor(Math.random() * cfg.slotCount);
+  shuffled.splice(insertPos, 0, g1.currentShape);
+  g1.slots = shuffled.slice(0, cfg.slotCount);
+}
+
+function g1RenderQuestion() {
+  const el    = document.getElementById('g1-draggable-shape');
+  if (!el) return;
+  const color = G1_COLORS[g1.currentColor];
+  el.innerHTML = g1MakeSVG(g1.currentShape, color.fill, color.stroke, 200);
+  el.style.animation = 'none';
+  void el.offsetWidth;
+  el.style.animation = '';
+  el.classList.remove('dragging');
+  el.style.left = el.style.top = el.style.position = el.style.transform = el.style.opacity = '';
+  g1ResetHintTimer();
+}
+
+function g1RenderSlots() {
+  const area = document.getElementById('g1-slots-area');
+  if (!area) return;
+  area.innerHTML = '';
+  const isSmall = g1.level >= 2;
+  const svgSize = isSmall ? 70 : 80;
+  g1.slots.forEach((shape, idx) => {
+    const card = document.createElement('div');
+    card.className = `slot-card${isSmall ? ' small' : ''}`;
+    card.dataset.shape = shape;
+    card.dataset.idx   = idx;
+    card.innerHTML = g1MakeSVG(shape, SILHOUETTE_FILL, SILHOUETTE_STROKE, svgSize, true);
+    area.appendChild(card);
+  });
+}
+
+// ヒントタイマー
+function g1ResetHintTimer() {
+  g1ClearHintTimers();
+  g1HintActive = false;
+  g1HintTimerQ = setTimeout(() => g1ShowHint(), 8000);
+}
+
+function g1StartDragHintTimer() {
+  clearTimeout(g1HintTimerD);
+  clearTimeout(g1HintTimerQ);
+  g1HintActive = false;
+  g1HideHint();
+  g1HintTimerD = setTimeout(() => g1ShowHint(), 5000);
+}
+
+function g1ClearHintTimers() {
+  clearTimeout(g1HintTimerQ);
+  clearTimeout(g1HintTimerD);
+}
+
+function g1ShowHint() {
+  g1HintActive = true;
+  document.querySelectorAll('.slot-card').forEach(card => {
+    if (card.dataset.shape === g1.currentShape) card.classList.add('hint-glow');
+  });
+}
+
+function g1HideHint() {
+  g1HintActive = false;
+  document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('hint-glow'));
+}
+
+// ドラッグ処理
+const g1DragEl = () => document.getElementById('g1-draggable-shape');
+
+function g1OnDragStart(clientX, clientY) {
+  const el = g1DragEl();
+  if (!el || g1.isDragging || g1.blocked) return;
+  ensureAudioCtx();
+  g1DragOriginRect = el.getBoundingClientRect();
+  g1.isDragging = true;
+  g1HideHint();
+  g1StartDragHintTimer();
+  el.classList.add('dragging');
+  el.style.position = 'fixed';
+  g1MoveDragEl(clientX, clientY);
+}
+
+function g1OnDragMove(clientX, clientY) {
+  if (!g1.isDragging) return;
+  g1MoveDragEl(clientX, clientY);
+  document.querySelectorAll('.slot-card').forEach(card => {
+    const dist = g1DistToCenter(card, clientX, clientY);
+    if (dist < SNAP_DISTANCE) {
+      card.classList.add('hover');
+      card.classList.remove('near-glow');
+    } else if (dist < NEAR_GLOW_DIST + SNAP_DISTANCE) {
+      card.classList.remove('hover');
+      card.classList.add('near-glow');
+    } else {
+      card.classList.remove('hover', 'near-glow');
+    }
+  });
+}
+
+function g1OnDragEnd(clientX, clientY) {
+  if (!g1.isDragging) return;
+  g1.isDragging = false;
+  document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('hover','near-glow'));
+  clearTimeout(g1HintTimerD);
+
+  let nearest = null, nearDist = Infinity;
+  document.querySelectorAll('.slot-card').forEach(card => {
+    const d = g1DistToCenter(card, clientX, clientY);
+    if (d < nearDist) { nearDist = d; nearest = card; }
+  });
+
+  if (nearest && nearDist <= SNAP_DISTANCE) {
+    if (nearest.dataset.shape === g1.currentShape) g1OnCorrect();
+    else g1OnWrong();
+  } else {
+    g1ReturnDragEl();
+  }
+}
+
+function g1MoveDragEl(clientX, clientY) {
+  const el = g1DragEl();
+  if (!el) return;
+  el.style.left      = `${clientX - 100}px`;
+  el.style.top       = `${clientY - 100}px`;
+  el.style.transform = 'scale(1.08)';
+}
+
+function g1ResetDragEl() {
+  const el = g1DragEl();
+  if (!el) return;
+  el.classList.remove('dragging','return-anim');
+  el.style.position = el.style.left = el.style.top = el.style.transform = '';
+}
+
+function g1ReturnDragEl() {
+  const el = g1DragEl();
+  if (!el || !g1DragOriginRect) { g1ResetDragEl(); return; }
+  el.classList.add('return-anim');
+  const targetLeft = g1DragOriginRect.left;
+  const targetTop  = g1DragOriginRect.top;
+  requestAnimationFrame(() => {
+    el.style.left      = `${targetLeft}px`;
+    el.style.top       = `${targetTop}px`;
+    el.style.transform = 'scale(1)';
+    setTimeout(() => {
+      g1ResetDragEl();
+      g1HintTimerQ = setTimeout(() => g1ShowHint(), 5000);
+    }, 420);
+  });
+}
+
+function g1DistToCenter(el, cx, cy) {
+  const rect = el.getBoundingClientRect();
+  return Math.hypot(cx - (rect.left + rect.width/2), cy - (rect.top + rect.height/2));
+}
+
+function g1OnCorrect() {
+  if (g1.blocked) return;
+  g1.blocked = true;
+  g1ClearHintTimers();
+  g1HideHint();
+  playCorrectSound();
+  g1.score++;
+  g1.levelProgress++;
+  g1UpdateScoreDisplay();
+  const el = g1DragEl();
+  if (el) { g1ResetDragEl(); el.style.opacity = '0'; }
+  showCorrectEffect(() => {
+    if (el) el.style.opacity = '';
+    g1.blocked = false;
+    if (g1.levelProgress >= 5 && g1.level < 2) g1DoLevelUp();
+    else g1NextQuestion();
+  });
+}
+
+function g1OnWrong() {
+  if (g1.blocked) return;
+  g1.blocked = true;
+  playWrongSound();
+  g1ReturnDragEl();
+  setTimeout(() => { g1.blocked = false; }, 440);
+}
+
+function g1DoLevelUp() {
+  g1.level = 2;
+  g1.levelProgress = 0;
+  g1UpdateScoreDisplay();
   const overlay = document.getElementById('levelup-overlay');
   overlay.classList.add('active');
-
   setTimeout(() => {
     overlay.classList.remove('active');
     overlay.style.animation = 'none';
     void overlay.offsetWidth;
     overlay.style.animation = '';
-    nextQuestion();
+    g1NextQuestion();
   }, 1900);
 }
 
-/* =====================================================
-   次の問題へ
-===================================================== */
+function g1NextQuestion() {
+  g1GenerateQuestion();
+  g1RenderQuestion();
+  g1RenderSlots();
+}
 
-function nextQuestion() {
-  generateQuestion();
-  renderQuestion();
-  renderSlots();
+/** ゲーム1初期化 */
+function initGame1() {
+  // 状態リセット
+  g1.level = 1; g1.score = 0; g1.levelProgress = 0;
+  g1.currentShape = ''; g1.isDragging = false; g1.blocked = false;
+  g1LoadHighscore();
+  g1UpdateScoreDisplay();
+  bindVolumeControl('g1-vol-btn','g1-vol-panel','g1-vol-slider','g1-vol-pct');
+  g1NextQuestion();
+
+  // ドラッグイベントを（再）バインド（画面初回のみ）
+  const dragEl = document.getElementById('g1-draggable-shape');
+  if (dragEl && !dragEl._g1Bound) {
+    dragEl._g1Bound = true;
+
+    dragEl.addEventListener('mousedown', e => {
+      e.preventDefault();
+      if (currentScreen !== 'game1') return;
+      g1OnDragStart(e.clientX, e.clientY);
+    });
+    document.addEventListener('mousemove', e => {
+      if (currentScreen !== 'game1') return;
+      g1OnDragMove(e.clientX, e.clientY);
+    });
+    document.addEventListener('mouseup', e => {
+      if (currentScreen !== 'game1') return;
+      g1OnDragEnd(e.clientX, e.clientY);
+    });
+    dragEl.addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (currentScreen !== 'game1') return;
+      const t = e.touches[0];
+      g1OnDragStart(t.clientX, t.clientY);
+    }, { passive: false });
+    document.addEventListener('touchmove', e => {
+      if (currentScreen !== 'game1' || !g1.isDragging) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      g1OnDragMove(t.clientX, t.clientY);
+    }, { passive: false });
+    document.addEventListener('touchend', e => {
+      if (currentScreen !== 'game1') return;
+      const t = e.changedTouches[0];
+      g1OnDragEnd(t.clientX, t.clientY);
+    });
+  }
 }
 
 /* =====================================================
-   ゲーム初期化
+   ゲーム2：あわをはじこう
 ===================================================== */
 
-function initGame() {
-  loadHighscore();
-  updateScoreDisplay();
-  initVolumeControl();
-  nextQuestion();
+// お題の色定義
+const G2_COLORS = [
+  { key: 'red',    label: 'あかい',   hex: '#ff4d4d', grad: 'radial-gradient(circle at 35% 30%, #ff9999, #ff1a1a 60%)' },
+  { key: 'blue',   label: 'あおい',   hex: '#4d88ff', grad: 'radial-gradient(circle at 35% 30%, #99bbff, #1a55ff 60%)' },
+  { key: 'yellow', label: 'きいろい', hex: '#ffd700', grad: 'radial-gradient(circle at 35% 30%, #fff099, #ffc700 60%)' },
+  { key: 'green',  label: 'みどりの', hex: '#33cc66', grad: 'radial-gradient(circle at 35% 30%, #99ffbb, #00aa44 60%)' },
+  { key: 'pink',   label: 'ももいろの', hex: '#ff66bb', grad: 'radial-gradient(circle at 35% 30%, #ffaad4, #ff3399 60%)' },
+  { key: 'orange', label: 'オレンジの', hex: '#ff8833', grad: 'radial-gradient(circle at 35% 30%, #ffbb88, #ff6600 60%)' },
+];
+
+// お題パターン（色インデックス、必要数）
+const G2_MISSIONS = [
+  { colorIdx: 0, count: 3 },
+  { colorIdx: 1, count: 2 },
+  { colorIdx: 2, count: 4 },
+  { colorIdx: 3, count: 3 },
+  { colorIdx: 4, count: 2 },
+  { colorIdx: 5, count: 4 },
+  { colorIdx: 0, count: 2 },
+  { colorIdx: 1, count: 4 },
+];
+
+let g2State = {
+  bubbles:      [],         // 現在の泡リスト
+  mission:      null,       // 現在のお題
+  missionIdx:   0,          // お題インデックス
+  popped:       0,          // 正解でポップした数
+  blocked:      false,
+  spawnTimer:   null,
+};
+
+/** 泡オブジェクトを1つ生成する */
+function g2CreateBubble() {
+  const colorDef = G2_COLORS[Math.floor(Math.random() * G2_COLORS.length)];
+  const size = 60 + Math.random() * 40; // 60〜100px
+  const left = 5 + Math.random() * 85;  // 画面幅の5〜90%
+  const duration = 8 + Math.random() * 7; // 8〜15秒
+
+  const el = document.createElement('div');
+  el.className = 'bubble';
+  el.style.width    = `${size}px`;
+  el.style.height   = `${size}px`;
+  el.style.left     = `${left}%`;
+  el.style.background = colorDef.grad;
+  el.style.boxShadow  = `inset 0 4px 12px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.2)`;
+  el.style.animationDuration = `${duration}s`;
+  el.style.animationDelay    = `${Math.random() * -duration * 0.8}s`;
+
+  // 光沢用の疑似要素をdivで代替
+  const shine = document.createElement('div');
+  shine.style.cssText = `
+    position:absolute; width:30%; height:30%;
+    top:15%; left:20%;
+    background:radial-gradient(circle, rgba(255,255,255,0.8), transparent);
+    border-radius:50%;
+    pointer-events:none;
+  `;
+  el.appendChild(shine);
+
+  // タップ/クリックハンドラ
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ensureAudioCtx();
+    g2OnBubbleTap(el, colorDef.key);
+  }, { passive: false });
+
+  const bubble = { el, colorKey: colorDef.key };
+  g2State.bubbles.push(bubble);
+
+  const area = document.getElementById('g2-bubble-area');
+  if (area) area.appendChild(el);
+
+  return bubble;
 }
 
-// DOMContentLoaded で開始
-document.addEventListener('DOMContentLoaded', initGame);
+/** 泡をタップしたとき */
+function g2OnBubbleTap(el, colorKey) {
+  if (g2State.blocked) return;
+  const mission = g2State.mission;
+  if (!mission) return;
+
+  const targetColor = G2_COLORS[mission.colorIdx].key;
+
+  if (colorKey === targetColor) {
+    // 正解の泡をポップ
+    playPopSound();
+    el.classList.add('popping');
+    el.style.pointerEvents = 'none';
+    g2State.popped++;
+
+    // カウント更新
+    document.getElementById('g2-count-display').textContent =
+      `${g2State.popped} / ${mission.count}`;
+
+    setTimeout(() => {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      g2State.bubbles = g2State.bubbles.filter(b => b.el !== el);
+
+      // お題クリア判定
+      if (g2State.popped >= mission.count) {
+        g2State.blocked = true;
+        showCorrectEffect(() => {
+          g2State.blocked = false;
+          g2NextMission();
+        });
+      }
+    }, 350);
+  }
+  // 間違いの色：何も起きない（ペナルティなし）
+}
+
+/** 次のお題へ */
+function g2NextMission() {
+  g2State.missionIdx = (g2State.missionIdx + 1) % G2_MISSIONS.length;
+  g2State.mission = G2_MISSIONS[g2State.missionIdx];
+  g2State.popped  = 0;
+  g2UpdateMissionDisplay();
+}
+
+/** お題テキストを更新 */
+function g2UpdateMissionDisplay() {
+  const m    = g2State.mission;
+  const cDef = G2_COLORS[m.colorIdx];
+  const textEl  = document.getElementById('g2-mission-text');
+  const countEl = document.getElementById('g2-count-display');
+  if (textEl) textEl.innerHTML = `<span style="color:${cDef.hex};font-size:1.1em;">●</span> ${cDef.label} あわを ${m.count}つ はじこう！`;
+  if (countEl) countEl.textContent = `${g2State.popped} / ${m.count}`;
+}
+
+/** ゲーム2初期化 */
+function initGame2() {
+  // 古い泡を全削除
+  const area = document.getElementById('g2-bubble-area');
+  if (area) area.innerHTML = '';
+  g2State.bubbles     = [];
+  g2State.missionIdx  = Math.floor(Math.random() * G2_MISSIONS.length);
+  g2State.mission     = G2_MISSIONS[g2State.missionIdx];
+  g2State.popped      = 0;
+  g2State.blocked     = false;
+
+  if (g2State.spawnTimer) clearInterval(g2State.spawnTimer);
+
+  g2UpdateMissionDisplay();
+  bindVolumeControl('g2-vol-btn','g2-vol-panel','g2-vol-slider','g2-vol-pct');
+
+  // 初期泡を6個生成
+  for (let i = 0; i < 6; i++) g2CreateBubble();
+
+  // 定期的に泡を補充（常に5〜8個を維持）
+  g2State.spawnTimer = setInterval(() => {
+    if (currentScreen !== 'game2') return;
+    // 画面上に残っている泡の数をカウント
+    const alive = g2State.bubbles.filter(b => b.el && b.el.parentNode).length;
+    if (alive < 5) g2CreateBubble();
+  }, 2000);
+}
+
+/* =====================================================
+   ゲーム3：どうぶつだあれ？
+===================================================== */
+
+// 動物リスト
+const G3_ANIMALS = [
+  { sound: 'ワンワン',    emoji: '🐶', name: 'いぬ' },
+  { sound: 'ニャーニャー', emoji: '🐱', name: 'ねこ' },
+  { sound: 'モーモー',    emoji: '🐮', name: 'うし' },
+  { sound: 'コケコッコー', emoji: '🐔', name: 'にわとり' },
+  { sound: 'ブーブー',    emoji: '🐷', name: 'ぶた' },
+  { sound: 'ケロケロ',    emoji: '🐸', name: 'かえる' },
+  { sound: 'ガオー',      emoji: '🦁', name: 'らいおん' },
+  { sound: 'メーメー',    emoji: '🐑', name: 'ひつじ' },
+];
+
+let g3State = {
+  answer:    null,  // 正解の動物オブジェクト
+  choices:   [],    // 3択の動物（answer含む）
+  score:     0,
+  total:     0,
+  blocked:   false,
+};
+
+/** 問題を生成する */
+function g3GenerateQuestion() {
+  // 正解をランダムに選ぶ（直前と異なるもの）
+  let answer;
+  do {
+    answer = randFrom(G3_ANIMALS);
+  } while (G3_ANIMALS.length > 1 && answer === g3State.answer);
+  g3State.answer = answer;
+
+  // 間違い選択肢を2つ選ぶ
+  const others  = G3_ANIMALS.filter(a => a !== answer);
+  const wrong   = shuffle(others).slice(0, 2);
+  g3State.choices = shuffle([answer, ...wrong]);
+
+  g3State.total++;
+}
+
+/** 問題UIを描画する */
+function g3RenderQuestion() {
+  // 問題カードをリセット
+  const card = document.getElementById('g3-question-card');
+  if (card) {
+    card.textContent = '❓';
+    card.classList.remove('correct-anim');
+  }
+
+  // プログレス
+  const prog = document.getElementById('g3-progress');
+  if (prog) prog.textContent = `もんだい ${g3State.total}`;
+
+  // 3択ボタン
+  const choices = document.getElementById('g3-choices');
+  if (!choices) return;
+  choices.innerHTML = '';
+  g3State.choices.forEach(animal => {
+    const btn = document.createElement('button');
+    btn.className = 'g3-choice-btn';
+    btn.textContent = animal.emoji;
+    btn.title = animal.name;
+    btn.addEventListener('click', () => g3OnChoice(animal, btn));
+    choices.appendChild(btn);
+  });
+}
+
+/** 選択肢をタップしたとき */
+function g3OnChoice(animal, btn) {
+  if (g3State.blocked) return;
+  ensureAudioCtx();
+
+  if (animal === g3State.answer) {
+    // 正解
+    g3State.blocked = true;
+    playCorrectSound();
+    g3State.score++;
+
+    // 問題カードに動物絵文字を表示
+    const card = document.getElementById('g3-question-card');
+    if (card) {
+      card.textContent = animal.emoji;
+      void card.offsetWidth;
+      card.classList.add('correct-anim');
+    }
+
+    showCorrectEffect(() => {
+      g3State.blocked = false;
+      g3GenerateQuestion();
+      g3RenderQuestion();
+    });
+  } else {
+    // 不正解：やさしくふわっと戻る
+    playWrongSound();
+    btn.classList.add('wrong-anim');
+    setTimeout(() => btn.classList.remove('wrong-anim'), 450);
+  }
+}
+
+/** 鳴き声を読み上げる */
+function g3SpeakSound() {
+  if (!g3State.answer) return;
+  if (!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const utter = new SpeechSynthesisUtterance(g3State.answer.sound);
+  utter.lang  = 'ja-JP';
+  utter.rate  = 0.85;
+  utter.pitch = 1.2;
+  window.speechSynthesis.speak(utter);
+}
+
+/** ゲーム3初期化 */
+function initGame3() {
+  g3State.answer  = null;
+  g3State.score   = 0;
+  g3State.total   = 0;
+  g3State.blocked = false;
+
+  bindVolumeControl('g3-vol-btn','g3-vol-panel','g3-vol-slider','g3-vol-pct');
+
+  // 鳴き声ボタンのバインド
+  const soundBtn = document.getElementById('g3-sound-btn');
+  if (soundBtn && !soundBtn._g3Bound) {
+    soundBtn._g3Bound = true;
+    soundBtn.addEventListener('click', () => {
+      ensureAudioCtx();
+      g3SpeakSound();
+    });
+  }
+
+  g3GenerateQuestion();
+  g3RenderQuestion();
+}
+
+/* =====================================================
+   ゲーム4：おなじのはどれ？（神経衰弱）
+===================================================== */
+
+// 絵柄（絵文字）
+const G4_EMOJIS = ['🐶','🐱','🐮','🐸','🦁','🐷','🐔','🐑','🍎','🍌','🍓','🌸','⭐','🌈','🎈','🎀'];
+
+const G4_LEVEL_CONFIG = [
+  { pairs: 4, cols: 4, rows: 2 }, // レベル1：4ペア8枚
+  { pairs: 5, cols: 4, rows: 3 }, // レベル2：5ペア10枚（ダミー2枚なし→10枚で4列3行＝12マス→10枚）
+  { pairs: 6, cols: 4, rows: 3 }, // レベル3：6ペア12枚
+];
+
+let g4State = {
+  level:       0,      // 0-indexed
+  cards:       [],     // { emoji, id, matched, el, flipped }
+  flipped:     [],     // 現在めくっているカード（最大2枚）
+  blocked:     false,
+  matchedPairs: 0,
+};
+
+/** カードをシャッフルして生成 */
+function g4GenerateCards() {
+  const cfg  = G4_LEVEL_CONFIG[g4State.level];
+  const emojis = shuffle(G4_EMOJIS).slice(0, cfg.pairs);
+  // ペアを作ってシャッフル
+  const pairs = shuffle([...emojis, ...emojis]);
+  g4State.cards = pairs.map((emoji, idx) => ({
+    emoji, id: idx, matched: false, el: null, flipped: false,
+  }));
+  g4State.flipped       = [];
+  g4State.matchedPairs  = 0;
+  g4State.blocked       = false;
+}
+
+/** グリッドを描画 */
+function g4RenderGrid() {
+  const grid = document.getElementById('g4-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  const cfg = G4_LEVEL_CONFIG[g4State.level];
+  grid.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
+
+  // カードサイズをコンテナに合わせて自動計算
+  const appWidth = Math.min(window.innerWidth, 430);
+  const padding  = 32; // 左右padding
+  const gap      = 10;
+  const cardW    = (appWidth - padding - gap * (cfg.cols - 1)) / cfg.cols;
+  const cardSize = Math.min(cardW, 90);
+
+  g4State.cards.forEach((card, idx) => {
+    const cardEl = document.createElement('div');
+    cardEl.className  = 'memo-card';
+    cardEl.style.width  = `${cardSize}px`;
+    cardEl.style.height = `${cardSize}px`;
+
+    const inner = document.createElement('div');
+    inner.className = 'memo-card-inner';
+
+    const front = document.createElement('div');
+    front.className   = 'memo-card-front';
+    front.textContent = '🎴';
+
+    const back = document.createElement('div');
+    back.className   = 'memo-card-back';
+    back.textContent = card.emoji;
+    // フォントサイズをカードサイズに応じて調整
+    back.style.fontSize = `${cardSize * 0.45}px`;
+    front.style.fontSize = `${cardSize * 0.35}px`;
+
+    inner.appendChild(front);
+    inner.appendChild(back);
+    cardEl.appendChild(inner);
+
+    cardEl.addEventListener('click', () => g4OnCardClick(idx));
+    card.el = cardEl;
+    grid.appendChild(cardEl);
+  });
+
+  // ヘッダー更新
+  g4UpdateHeader();
+}
+
+/** カードをタップしたとき */
+function g4OnCardClick(idx) {
+  if (g4State.blocked) return;
+  const card = g4State.cards[idx];
+  if (!card || card.matched || card.flipped) return;
+
+  ensureAudioCtx();
+
+  // カードをめくる
+  card.flipped = true;
+  card.el.classList.add('flipped');
+  playPopSound();
+
+  g4State.flipped.push(idx);
+
+  if (g4State.flipped.length === 2) {
+    g4State.blocked = true;
+    const [a, b] = g4State.flipped;
+    const cardA  = g4State.cards[a];
+    const cardB  = g4State.cards[b];
+
+    if (cardA.emoji === cardB.emoji) {
+      // ペア成立
+      setTimeout(() => {
+        playCorrectSound();
+        cardA.matched = cardB.matched = true;
+        cardA.el.classList.add('matched');
+        cardB.el.classList.add('matched');
+        g4State.matchedPairs++;
+        g4State.flipped = [];
+        g4State.blocked = false;
+        g4UpdateHeader();
+
+        // 全ペア揃ったらクリア
+        const cfg = G4_LEVEL_CONFIG[g4State.level];
+        if (g4State.matchedPairs >= cfg.pairs) {
+          setTimeout(() => {
+            showCorrectEffect(() => {
+              // 次のレベルへ
+              g4State.level = Math.min(g4State.level + 1, G4_LEVEL_CONFIG.length - 1);
+              g4GenerateCards();
+              g4RenderGrid();
+            });
+          }, 300);
+        }
+      }, 400);
+    } else {
+      // ミスマッチ：1秒後に裏返す
+      playWrongSound();
+      setTimeout(() => {
+        cardA.flipped = cardB.flipped = false;
+        cardA.el.classList.remove('flipped');
+        cardB.el.classList.remove('flipped');
+        g4State.flipped = [];
+        g4State.blocked = false;
+      }, 1000);
+    }
+  }
+}
+
+/** ヘッダー（残りペア数）を更新 */
+function g4UpdateHeader() {
+  const cfg  = G4_LEVEL_CONFIG[g4State.level];
+  const left = cfg.pairs - g4State.matchedPairs;
+  const pl   = document.getElementById('g4-pairs-left');
+  const lt   = document.getElementById('g4-level-text');
+  if (pl) pl.textContent = `あと ${left} ペア`;
+  if (lt) lt.textContent = `レベル ${g4State.level + 1}`;
+}
+
+/** ゲーム4初期化 */
+function initGame4() {
+  g4State.level = 0;
+  bindVolumeControl('g4-vol-btn','g4-vol-panel','g4-vol-slider','g4-vol-pct');
+  g4GenerateCards();
+  g4RenderGrid();
+}
+
+/* =====================================================
+   ゲーム5：いくつあるかな？
+===================================================== */
+
+// 登場するアイテム絵文字
+const G5_ITEMS = ['🍎','🌸','⭐','🎈','🐶','🦋','🍌','🎀','🐱','🍓','🌈','🐮'];
+
+let g5State = {
+  count:    0,     // 表示する数（1〜5）
+  answer:   0,
+  choices:  [],    // 3択の数字
+  item:     '',    // 表示する絵文字
+  score:    0,
+  total:    0,
+  blocked:  false,
+};
+
+/** 問題を生成する */
+function g5GenerateQuestion() {
+  // 1〜5の中からランダムに個数を選ぶ（直前と異なる）
+  let count;
+  do {
+    count = 1 + Math.floor(Math.random() * 5);
+  } while (count === g5State.count && g5State.total > 0);
+
+  g5State.count  = count;
+  g5State.answer = count;
+  g5State.item   = randFrom(G5_ITEMS);
+  g5State.total++;
+
+  // 選択肢：正解 ± 1〜2（1〜5の範囲内）
+  const nums = new Set([count]);
+  let tries = 0;
+  while (nums.size < 3 && tries < 20) {
+    const offset = (Math.random() < 0.5 ? 1 : -1) * (1 + Math.floor(Math.random() * 2));
+    const n = count + offset;
+    if (n >= 1 && n <= 8) nums.add(n);
+    tries++;
+  }
+  // 足りなければ隣接数で補完
+  if (nums.size < 3) nums.add(count < 4 ? count + 2 : count - 2);
+  g5State.choices = shuffle([...nums]).slice(0, 3);
+}
+
+/** 問題UIを描画する */
+function g5RenderQuestion() {
+  // プログレス
+  const prog = document.getElementById('g5-progress');
+  if (prog) prog.textContent = `もんだい ${g5State.total}`;
+
+  // アイテムをアニメーションで1個ずつ表示
+  const area = document.getElementById('g5-items-area');
+  if (area) {
+    area.innerHTML = '';
+    for (let i = 0; i < g5State.count; i++) {
+      const item = document.createElement('span');
+      item.className = 'g5-item';
+      item.textContent = g5State.item;
+      item.style.animationDelay = `${i * 0.12}s`;
+      area.appendChild(item);
+    }
+  }
+
+  // 数字ボタン
+  const choices = document.getElementById('g5-choices');
+  if (!choices) return;
+  choices.innerHTML = '';
+  g5State.choices.forEach(num => {
+    const btn = document.createElement('button');
+    btn.className   = 'g5-num-btn';
+    btn.textContent = String(num);
+    btn.addEventListener('click', () => g5OnChoice(num, btn));
+    choices.appendChild(btn);
+  });
+}
+
+/** 数字ボタンをタップしたとき */
+function g5OnChoice(num, btn) {
+  if (g5State.blocked) return;
+  ensureAudioCtx();
+
+  if (num === g5State.answer) {
+    // 正解
+    g5State.blocked = true;
+    playCorrectSound();
+    g5State.score++;
+    showCorrectEffect(() => {
+      g5State.blocked = false;
+      g5GenerateQuestion();
+      g5RenderQuestion();
+    });
+  } else {
+    // 不正解：やさしくふわっと戻る
+    playWrongSound();
+    btn.classList.add('wrong-anim');
+    setTimeout(() => btn.classList.remove('wrong-anim'), 450);
+  }
+}
+
+/** ゲーム5初期化 */
+function initGame5() {
+  g5State.count   = 0;
+  g5State.score   = 0;
+  g5State.total   = 0;
+  g5State.blocked = false;
+
+  bindVolumeControl('g5-vol-btn','g5-vol-panel','g5-vol-slider','g5-vol-pct');
+  g5GenerateQuestion();
+  g5RenderQuestion();
+}
+
+/* =====================================================
+   アプリ初期化
+===================================================== */
+function initApp() {
+  loadVolume();
+  // ホーム画面から開始
+  showScreen('home');
+}
+
+document.addEventListener('DOMContentLoaded', initApp);
 </script>
 </body>
 </html>
