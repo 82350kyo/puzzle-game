@@ -574,11 +574,15 @@ body {
   display: block;
 }
 
+/* カウント表示を大きめに */
 #g2-count-display {
-  font-size: 16px;
-  color: rgba(255,255,255,0.8);
-  margin-top: 4px;
+  font-size: 36px;
+  font-weight: 900;
+  color: #fff;
+  margin-top: 6px;
   display: block;
+  letter-spacing: 4px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 
 /* 泡エリア */
@@ -1793,28 +1797,26 @@ const G2_COLORS = [
   { key: 'orange', label: 'オレンジの', hex: '#ff8833', grad: 'radial-gradient(circle at 35% 30%, #ffbb88, #ff6600 60%)' },
 ];
 
-// お題パターン（色インデックス、必要数）
-const G2_MISSIONS = [
-  { colorIdx: 0, count: 3 },
-  { colorIdx: 1, count: 2 },
-  { colorIdx: 2, count: 4 },
-  { colorIdx: 3, count: 3 },
-  { colorIdx: 4, count: 2 },
-  { colorIdx: 5, count: 4 },
-  { colorIdx: 0, count: 2 },
-  { colorIdx: 1, count: 4 },
-];
+// お題パターンは固定リストを廃止 → 毎回ランダム生成する
 
 let g2State = {
   bubbles:      [],         // 現在の泡リスト
-  mission:      null,       // 現在のお題
-  missionIdx:   0,          // お題インデックス
+  mission:      null,       // 現在のお題 { colorIdx, count }
   popped:       0,          // 正解でポップした数
   blocked:      false,
   spawnTimer:   null,
 };
 
-/** 泡オブジェクトを1つ生成する */
+/**
+ * ランダムなお題を生成する
+ * 色：6色からランダム、個数：2〜4のランダム
+ */
+function g2MakeRandomMission() {
+  const colorIdx = Math.floor(Math.random() * G2_COLORS.length);
+  const count    = 2 + Math.floor(Math.random() * 3); // 2・3・4のどれか
+  return { colorIdx, count };
+}
+
 /** ランダムな色で泡を1つ生成する（g2CreateBubbleWithColor の呼び出し糖衣） */
 function g2CreateBubble() {
   return g2CreateBubbleWithColor(null);
@@ -1835,9 +1837,9 @@ function g2OnBubbleTap(el, colorKey) {
     el.style.pointerEvents = 'none';
     g2State.popped++;
 
-    // カウント更新
+    // カウント更新（「1／3」「2／3」の形式で表示）
     document.getElementById('g2-count-display').textContent =
-      `${g2State.popped} / ${mission.count}`;
+      `${g2State.popped}／${mission.count}`;
 
     setTimeout(() => {
       if (el.parentNode) el.parentNode.removeChild(el);
@@ -1856,26 +1858,45 @@ function g2OnBubbleTap(el, colorKey) {
   // 間違いの色：何も起きない（ペナルティなし）
 }
 
-/** 次のお題へ */
+/** 次のお題へ（色・個数を完全ランダムで再抽選） */
 function g2NextMission() {
-  g2State.missionIdx = (g2State.missionIdx + 1) % G2_MISSIONS.length;
-  g2State.mission = G2_MISSIONS[g2State.missionIdx];
+  // 直前と同じ色にならないよう再抽選する
+  const prevColorIdx = g2State.mission ? g2State.mission.colorIdx : -1;
+  let newMission;
+  do {
+    newMission = g2MakeRandomMission();
+  } while (G2_COLORS.length > 1 && newMission.colorIdx === prevColorIdx);
+
+  g2State.mission = newMission;
   g2State.popped  = 0;
   g2UpdateMissionDisplay();
-  // 新しいお題の色の泡を必ず2個すぐに補充する
-  const newTargetKey = G2_COLORS[g2State.mission.colorIdx].key;
-  g2CreateBubbleWithColor(newTargetKey);
-  g2CreateBubbleWithColor(newTargetKey);
+  // 泡の補充は定期タイマーに任せる（色指定なし）
 }
+
+/**
+ * 色キーに対応する絵文字を返す
+ * （お題テキストで「🔴 あかい あわを」のように表示するため）
+ */
+const G2_COLOR_EMOJI = {
+  red:    '🔴',
+  blue:   '🔵',
+  yellow: '🟡',
+  green:  '🟢',
+  pink:   '🩷',
+  orange: '🟠',
+};
 
 /** お題テキストを更新 */
 function g2UpdateMissionDisplay() {
   const m    = g2State.mission;
   const cDef = G2_COLORS[m.colorIdx];
+  const emoji = G2_COLOR_EMOJI[cDef.key] || '●';
   const textEl  = document.getElementById('g2-mission-text');
   const countEl = document.getElementById('g2-count-display');
-  if (textEl) textEl.innerHTML = `<span style="color:${cDef.hex};font-size:1.1em;">●</span> ${cDef.label} あわを ${m.count}つ はじこう！`;
-  if (countEl) countEl.textContent = `${g2State.popped} / ${m.count}`;
+  // 例：「🔴 あかい あわを 3つ はじこう！」
+  if (textEl) textEl.textContent = `${emoji} ${cDef.label} あわを ${m.count}つ はじこう！`;
+  // 例：「1／3」のようにカウンター表示
+  if (countEl) countEl.textContent = `${g2State.popped}／${m.count}`;
 }
 
 /**
@@ -1943,40 +1964,28 @@ function initGame2() {
   // 古い泡を全削除
   const area = document.getElementById('g2-bubble-area');
   if (area) area.innerHTML = '';
-  g2State.bubbles     = [];
-  g2State.missionIdx  = Math.floor(Math.random() * G2_MISSIONS.length);
-  g2State.mission     = G2_MISSIONS[g2State.missionIdx];
-  g2State.popped      = 0;
-  g2State.blocked     = false;
+  g2State.bubbles  = [];
+  g2State.mission  = g2MakeRandomMission(); // 完全ランダムでお題を決定
+  g2State.popped   = 0;
+  g2State.blocked  = false;
 
   if (g2State.spawnTimer) clearInterval(g2State.spawnTimer);
 
   g2UpdateMissionDisplay();
   bindVolumeControl('g2-vol-btn','g2-vol-panel','g2-vol-slider','g2-vol-pct');
 
-  // 初期泡を8個生成（お題の色を必ず2個含める）
-  const targetKey = G2_COLORS[g2State.mission.colorIdx].key;
-  // お題色を2個必ず含める
-  for (let i = 0; i < 2; i++) g2CreateBubbleWithColor(targetKey);
-  // 残り6個はランダム（お題色が偶然混ざるのはOK）
-  for (let i = 0; i < 6; i++) g2CreateBubbleWithColor(null);
+  // 初期泡を7個生成（色は完全ランダム・お題色の優遇なし）
+  for (let i = 0; i < 7; i++) g2CreateBubble();
 
-  // 定期的に泡を補充（常に5〜8個を維持）
+  // 定期的に泡を補充（常に6〜8個を維持）
   g2State.spawnTimer = setInterval(() => {
     if (currentScreen !== 'game2') return;
     // done フラグが立っていない（まだ浮遊中）の泡だけをカウント
     const alive = g2State.bubbles.filter(b => !b.done).length;
-    if (alive < 5) {
-      // お題の色がほぼない場合は必ずお題色を1個補充
-      const currentTarget = G2_COLORS[g2State.mission.colorIdx].key;
-      const targetAlive = g2State.bubbles.filter(b => !b.done && b.colorKey === currentTarget).length;
-      // お題色が0個なら1個確定で補充、それ以外はランダム補充
-      if (targetAlive === 0) {
-        g2CreateBubbleWithColor(currentTarget);
-      } else {
-        g2CreateBubbleWithColor(null);
-      }
-      g2CreateBubbleWithColor(null);
+    if (alive < 6) {
+      // 色は完全ランダム・お題色の優先なし
+      g2CreateBubble();
+      if (alive < 5) g2CreateBubble(); // 極端に少ない場合は2個補充
     }
   }, 1500);
 }
