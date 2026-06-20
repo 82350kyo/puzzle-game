@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>かたち・いろ あわせゲーム</title>
+<style>
+  /* ===== リセット・ベース ===== */
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  /* ===== ゲーム全体のラッパー（スマホ縦向き最適化） ===== */
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: #b0c4de;
+    font-family: sans-serif;
+  }
+
+  #game-container {
+    position: relative;
+    width: 100%;
+    max-width: 430px;
+    height: 100svh;
+    /* パステルグラデーション：空から草原へ */
+    background: linear-gradient(
+      180deg,
+      #a8d8f0 0%,      /* 空色 */
+      #c5e8f0 30%,     /* 薄い水色 */
+      #d4f0c8 65%,     /* 草原の薄緑 */
+      #b8e09a 100%     /* 草原の緑 */
+    );
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* ===== 雲の背景装飾（CSS only） ===== */
+  #game-container::before {
+    content: '';
+    position: absolute;
+    top: 40px;
+    left: -30px;
+    width: 120px;
+    height: 60px;
+    background: rgba(255,255,255,0.55);
+    border-radius: 50px;
+    box-shadow: 70px -10px 0 rgba(255,255,255,0.4), 140px 5px 0 rgba(255,255,255,0.3);
+    pointer-events: none;
+  }
+
+  /* ===== スコアエリア（⭐最大5つ） ===== */
+  #score-area {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 20px 6px;
+    width: 100%;
+  }
+
+  /* 各⭐ */
+  .score-star {
+    font-size: 32px;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    filter: grayscale(0.8) brightness(0.7);
+    display: inline-block;
+  }
+
+  /* 点灯中の⭐ */
+  .score-star.lit {
+    filter: none;
+    transform: scale(1.15);
+  }
+
+  /* ハイスコア表示バッジ */
+  #highscore-badge {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: rgba(255,215,0,0.85);
+    border-radius: 20px;
+    padding: 4px 10px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.18);
+  }
+
+  #highscore-badge .hs-star {
+    font-size: 14px;
+  }
+
+  #highscore-num {
+    font-size: 14px;
+    font-weight: bold;
+    color: #7a5000;
+  }
+
+  /* ===== レベルバッジ ===== */
+  #level-badge {
+    background: rgba(255,255,255,0.75);
+    border-radius: 20px;
+    padding: 4px 16px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #5a3e9b;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+    margin-bottom: 2px;
+  }
+
+  /* ===== お題エリア ===== */
+  #question-area {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    padding: 10px 0 5px;
+  }
+
+  /* お題のかたち本体（ドラッグ対象） */
+  #draggable-shape {
+    cursor: grab;
+    position: relative;
+    z-index: 200;
+    /* ふわっと登場アニメ */
+    animation: shapeAppear 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+    filter: drop-shadow(0 6px 16px rgba(0,0,0,0.22));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #draggable-shape svg {
+    width: 200px;
+    height: 200px;
+    pointer-events: none;
+  }
+
+  /* ドラッグ中はフローティング状態 */
+  #draggable-shape.dragging {
+    cursor: grabbing;
+    position: fixed;
+    z-index: 9999;
+    filter: drop-shadow(0 12px 24px rgba(0,0,0,0.35));
+    transform: scale(1.08);
+    pointer-events: none;
+  }
+
+  @keyframes shapeAppear {
+    from {
+      opacity: 0;
+      transform: scale(0.4) translateY(-60px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* ===== シルエット枠エリア ===== */
+  #slots-area {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: flex-end;
+    gap: 14px;
+    padding: 10px 14px 24px;
+    flex-wrap: wrap;
+    width: 100%;
+    margin-top: auto;
+  }
+
+  /* 各シルエット枠カード */
+  .slot-card {
+    background: rgba(255,255,255,0.82);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 130px;
+    height: 130px;
+    box-shadow:
+      0 4px 14px rgba(0,0,0,0.13),
+      inset 0 1px 3px rgba(255,255,255,0.9);
+    transition:
+      transform 0.18s ease,
+      box-shadow 0.18s ease,
+      background 0.18s ease;
+    position: relative;
+  }
+
+  /* レベル2（4枠）では少し小さく */
+  .slot-card.small {
+    width: 110px;
+    height: 110px;
+  }
+  .slot-card.small svg {
+    width: 70px;
+    height: 70px;
+  }
+
+  .slot-card svg {
+    width: 80px;
+    height: 80px;
+    pointer-events: none;
+  }
+
+  /* ホバー・ドラッグオーバー時 */
+  .slot-card.hover {
+    transform: scale(1.08);
+    box-shadow: 0 8px 24px rgba(100,180,255,0.5), inset 0 1px 3px rgba(255,255,255,0.9);
+    background: rgba(200,235,255,0.95);
+  }
+
+  /* 不正解シェイク */
+  .slot-card.wrong {
+    animation: wrongShake 0.5s ease;
+    background: rgba(255,200,200,0.92);
+    box-shadow: 0 4px 14px rgba(255,80,80,0.4);
+  }
+
+  @keyframes wrongShake {
+    0%, 100% { transform: translateX(0) scale(1); }
+    15%  { transform: translateX(-10px) scale(1.04); }
+    30%  { transform: translateX(10px)  scale(1.04); }
+    45%  { transform: translateX(-8px)  scale(1.02); }
+    60%  { transform: translateX(8px)   scale(1.02); }
+    75%  { transform: translateX(-5px)  scale(1.01); }
+    90%  { transform: translateX(5px)   scale(1.01); }
+  }
+
+  /* ===== 正解エフェクト全画面オーバーレイ ===== */
+  #correct-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 8000;
+    display: none;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  #correct-overlay.active {
+    display: block;
+  }
+
+  /* 中央の大きな⭐ */
+  #big-star {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    font-size: 160px;
+    z-index: 8100;
+    animation: bigStarAnim 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    filter: drop-shadow(0 0 30px rgba(255,220,0,0.9));
+  }
+
+  @keyframes bigStarAnim {
+    0%   { transform: translate(-50%, -50%) scale(0) rotate(-20deg); opacity: 1; }
+    55%  { transform: translate(-50%, -50%) scale(1.3) rotate(8deg); opacity: 1; }
+    80%  { transform: translate(-50%, -50%) scale(1.1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.2) rotate(0deg); opacity: 0; }
+  }
+
+  /* キラキラ（小さい星が飛び散る） */
+  .sparkle {
+    position: absolute;
+    font-size: 28px;
+    z-index: 8050;
+    animation: sparkleFly 0.8s ease-out forwards;
+    pointer-events: none;
+  }
+
+  @keyframes sparkleFly {
+    0%   { transform: translate(0,0) scale(1);   opacity: 1; }
+    100% { transform: var(--tx, translate(80px, 0) scale(0.2)); opacity: 0; }
+  }
+
+  /* 紙吹雪 */
+  .confetti {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    top: -20px;
+    animation: confettiFall linear forwards;
+    z-index: 8050;
+  }
+
+  @keyframes confettiFall {
+    0%   { transform: translateY(0) rotate(0deg)   translateX(0);   opacity: 1; }
+    100% { transform: translateY(110vh) rotate(720deg) translateX(var(--cx, 0)); opacity: 0; }
+  }
+
+  /* ===== レベルアップオーバーレイ ===== */
+  #levelup-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: rgba(80, 50, 160, 0.72);
+    pointer-events: none;
+  }
+
+  #levelup-overlay.active {
+    display: flex;
+    animation: levelupFade 1.8s ease forwards;
+  }
+
+  #levelup-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    animation: levelupPop 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+  }
+
+  #levelup-stars {
+    font-size: 64px;
+    letter-spacing: 8px;
+  }
+
+  #levelup-emoji {
+    font-size: 90px;
+    filter: drop-shadow(0 0 20px rgba(255,220,0,0.9));
+  }
+
+  @keyframes levelupPop {
+    from { transform: scale(0) rotate(-10deg); opacity: 0; }
+    to   { transform: scale(1) rotate(0deg);   opacity: 1; }
+  }
+
+  @keyframes levelupFade {
+    0%   { opacity: 1; }
+    60%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+
+  /* ===== スペーサー（上部余白調整） ===== */
+  #top-spacer {
+    flex: 0 0 8px;
+  }
+
+  /* ===== ミドルスペーサー（お題とスロットの間の余白） ===== */
+  #mid-spacer {
+    flex: 1 1 auto;
+    min-height: 10px;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+
+  <!-- 上部余白 -->
+  <div id="top-spacer"></div>
+
+  <!-- スコアエリア：⭐5つ段階的に光る -->
+  <div id="score-area">
+    <span class="score-star" id="star-0">⭐</span>
+    <span class="score-star" id="star-1">⭐</span>
+    <span class="score-star" id="star-2">⭐</span>
+    <span class="score-star" id="star-3">⭐</span>
+    <span class="score-star" id="star-4">⭐</span>
+    <!-- ハイスコアバッジ -->
+    <div id="highscore-badge">
+      <span class="hs-star">🏆</span>
+      <span id="highscore-num">0</span>
+    </div>
+  </div>
+
+  <!-- レベルバッジ -->
+  <div id="level-badge">LV.1</div>
+
+  <!-- お題エリア -->
+  <div id="question-area">
+    <div id="draggable-shape">
+      <!-- SVGはJSで動的に挿入 -->
+    </div>
+  </div>
+
+  <!-- 中間スペーサー -->
+  <div id="mid-spacer"></div>
+
+  <!-- シルエット枠エリア -->
+  <div id="slots-area">
+    <!-- スロットカードはJSで動的に生成 -->
+  </div>
+
+</div>
+
+<!-- 正解エフェクトオーバーレイ -->
+<div id="correct-overlay">
+  <div id="big-star">⭐</div>
+</div>
+
+<!-- レベルアップオーバーレイ -->
+<div id="levelup-overlay">
+  <div id="levelup-content">
+    <div id="levelup-stars">⭐⭐⭐</div>
+    <div id="levelup-emoji">🎉</div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+/* =====================================================
+   定数・設定
+===================================================== */
+
+// 形の種類
+const SHAPES = ['circle', 'square', 'triangle', 'star'];
+
+// 6色の定義（パステルよりも鮮やかに3歳児向け）
+const COLORS = {
+  red:    { fill: '#FF4444', stroke: '#CC0000', label: 'あか' },
+  blue:   { fill: '#3388FF', stroke: '#0055CC', label: 'あお' },
+  yellow: { fill: '#FFD700', stroke: '#CC9900', label: 'きいろ' },
+  green:  { fill: '#33CC66', stroke: '#009933', label: 'みどり' },
+  pink:   { fill: '#FF66BB', stroke: '#CC3388', label: 'ぴんく' },
+  orange: { fill: '#FF8833', stroke: '#CC5500', label: 'オレンジ' },
+};
+
+const COLOR_KEYS = Object.keys(COLORS);
+
+// シルエット枠の色（薄いグレー）
+const SILHOUETTE_FILL   = 'rgba(180,190,200,0.45)';
+const SILHOUETTE_STROKE = 'rgba(140,155,175,0.7)';
+
+// スナップ判定距離（px）
+const SNAP_DISTANCE = 80;
+
+// レベル設定
+const LEVEL_CONFIG = {
+  1: { slotCount: 3, shapes: ['circle','square','triangle'] },
+  2: { slotCount: 4, shapes: ['circle','square','triangle','star'] },
+};
+
+/* =====================================================
+   ゲーム状態
+===================================================== */
+let state = {
+  level:         1,       // 現在のレベル
+  score:         0,       // 現在セッションのスコア（正解数）
+  levelProgress: 0,       // このレベル内での正解数（5でレベルアップ）
+  highscore:     0,       // ハイスコア
+  currentShape:  '',      // 現在のお題の形
+  currentColor:  '',      // 現在のお題の色キー
+  slots:         [],      // 現在のスロット形リスト
+  isDragging:    false,   // ドラッグ中フラグ
+  blocked:       false,   // アニメ中の入力ブロック
+};
+
+/* =====================================================
+   SVG 描画関数
+===================================================== */
+
+/**
+ * 形のSVGコンテンツを返す（viewBox="0 0 100 100"前提）
+ * @param {string} shape  - 形の種類
+ * @param {string} fill   - 塗り色
+ * @param {string} stroke - 枠線色
+ * @param {boolean} silhouette - シルエット枠モード
+ */
+function shapeSVGContent(shape, fill, stroke, silhouette = false) {
+  const f = silhouette ? SILHOUETTE_FILL   : fill;
+  const s = silhouette ? SILHOUETTE_STROKE : stroke;
+  const sw = silhouette ? 5 : 3; // 枠線の太さ
+
+  switch (shape) {
+    case 'circle':
+      return `<circle cx="50" cy="50" r="42"
+        fill="${f}" stroke="${s}" stroke-width="${sw}"/>`;
+
+    case 'square':
+      return `<rect x="8" y="8" width="84" height="84" rx="10" ry="10"
+        fill="${f}" stroke="${s}" stroke-width="${sw}"/>`;
+
+    case 'triangle': {
+      // 正三角形（重心が中央付近）
+      const pts = '50,6 94,90 6,90';
+      return `<polygon points="${pts}"
+        fill="${f}" stroke="${s}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    }
+
+    case 'star': {
+      // 5点星（外半径44、内半径18）
+      const starPts = starPoints(50, 50, 44, 18, 5);
+      return `<polygon points="${starPts}"
+        fill="${f}" stroke="${s}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+    }
+
+    default:
+      return '';
+  }
+}
+
+/**
+ * 5点星の座標を生成
+ */
+function starPoints(cx, cy, outerR, innerR, points) {
+  let pts = [];
+  for (let i = 0; i < points * 2; i++) {
+    const angle = (Math.PI / points) * i - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    pts.push(`${(cx + Math.cos(angle) * r).toFixed(2)},${(cy + Math.sin(angle) * r).toFixed(2)}`);
+  }
+  return pts.join(' ');
+}
+
+/**
+ * SVG要素の文字列全体を返す
+ */
+function makeSVG(shape, fill, stroke, size = 200, silhouette = false) {
+  const content = shapeSVGContent(shape, fill, stroke, silhouette);
+  return `<svg viewBox="0 0 100 100" width="${size}" height="${size}"
+    xmlns="http://www.w3.org/2000/svg" style="display:block;overflow:visible;">
+    ${content}
+  </svg>`;
+}
+
+/* =====================================================
+   Web Audio API 効果音
+===================================================== */
+
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch(e) {}
+  }
+  return audioCtx;
+}
+
+/**
+ * 正解音：明るいピコピコ3音（ド・ミ・ソ）
+ */
+function playCorrectSound() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+
+  const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+  notes.forEach((freq, i) => {
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.12);
+
+    gain.gain.setValueAtTime(0.18, ctx.currentTime + i * 0.12);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.12 + 0.18);
+
+    osc.start(ctx.currentTime + i * 0.12);
+    osc.stop(ctx.currentTime  + i * 0.12 + 0.2);
+  });
+}
+
+/**
+ * 不正解音：低いブー1音
+ */
+function playWrongSound() {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+
+  const osc  = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(120, ctx.currentTime);
+  osc.frequency.linearRampToValueAtTime(80, ctx.currentTime + 0.35);
+
+  gain.gain.setValueAtTime(0.2, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+
+  osc.start(ctx.currentTime);
+  osc.stop(ctx.currentTime + 0.4);
+}
+
+/* =====================================================
+   スコア・ハイスコア管理
+===================================================== */
+
+function loadHighscore() {
+  try {
+    state.highscore = parseInt(localStorage.getItem('shapePuzzleHighscore') || '0', 10);
+  } catch(e) {
+    state.highscore = 0;
+  }
+}
+
+function saveHighscore() {
+  try {
+    localStorage.setItem('shapePuzzleHighscore', String(state.highscore));
+  } catch(e) {}
+}
+
+function updateScoreDisplay() {
+  // ⭐を段階的に点灯（levelProgress が 0〜5 の間）
+  const prog = Math.min(state.levelProgress, 5);
+  for (let i = 0; i < 5; i++) {
+    const el = document.getElementById(`star-${i}`);
+    if (i < prog) {
+      el.classList.add('lit');
+    } else {
+      el.classList.remove('lit');
+    }
+  }
+
+  // ハイスコア更新
+  if (state.score > state.highscore) {
+    state.highscore = state.score;
+    saveHighscore();
+  }
+  document.getElementById('highscore-num').textContent = state.highscore;
+  document.getElementById('level-badge').textContent = `LV.${state.level}`;
+}
+
+/* =====================================================
+   問題生成
+===================================================== */
+
+/**
+ * ランダムな要素をリストから取得
+ */
+function randFrom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+/**
+ * 新しいお題と選択肢スロットを生成
+ */
+function generateQuestion() {
+  const cfg = LEVEL_CONFIG[state.level] || LEVEL_CONFIG[2];
+
+  // お題のかたちと色をランダムに選ぶ
+  // 直前と同じかたちが連続しないようにシャッフル
+  let newShape;
+  do {
+    newShape = randFrom(cfg.shapes);
+  } while (cfg.shapes.length > 1 && newShape === state.currentShape);
+
+  state.currentShape = newShape;
+  state.currentColor = randFrom(COLOR_KEYS);
+
+  // スロットの配置：正解の形を含むシャッフルリスト
+  const otherShapes = cfg.shapes.filter(s => s !== state.currentShape);
+  // シャッフル
+  const shuffled = otherShapes.sort(() => Math.random() - 0.5);
+  // 正解を混ぜてランダム位置に挿入
+  const insertPos = Math.floor(Math.random() * cfg.slotCount);
+  shuffled.splice(insertPos, 0, state.currentShape);
+  state.slots = shuffled.slice(0, cfg.slotCount);
+}
+
+/* =====================================================
+   DOM 構築
+===================================================== */
+
+function renderQuestion() {
+  const el = document.getElementById('draggable-shape');
+  const color = COLORS[state.currentColor];
+
+  // SVGを挿入してアニメリセット
+  el.innerHTML = makeSVG(state.currentShape, color.fill, color.stroke, 200);
+
+  // アニメをリセットして再発火
+  el.style.animation = 'none';
+  void el.offsetWidth; // リフロー
+  el.style.animation = '';
+
+  // ドラッグ中スタイルをリセット
+  el.classList.remove('dragging');
+  el.style.left   = '';
+  el.style.top    = '';
+  el.style.position = '';
+  el.style.transform = '';
+}
+
+function renderSlots() {
+  const area = document.getElementById('slots-area');
+  area.innerHTML = '';
+
+  const isSmall = state.level >= 2;
+  const svgSize = isSmall ? 70 : 80;
+
+  state.slots.forEach((shape, idx) => {
+    const card = document.createElement('div');
+    card.className = `slot-card${isSmall ? ' small' : ''}`;
+    card.dataset.shape = shape;
+    card.dataset.idx   = idx;
+    card.innerHTML = makeSVG(shape, SILHOUETTE_FILL, SILHOUETTE_STROKE, svgSize, true);
+    area.appendChild(card);
+  });
+}
+
+/* =====================================================
+   ドラッグ＆ドロップ（マウス＋タッチ共通）
+===================================================== */
+
+const dragEl = document.getElementById('draggable-shape');
+
+// ドラッグ開始時の共通処理
+function onDragStart(clientX, clientY) {
+  if (state.isDragging || state.blocked) return;
+
+  // AudioContextをユーザー操作で起動（iOS対策）
+  getAudioCtx();
+  if (audioCtx && audioCtx.state === 'suspended') {
+    audioCtx.resume();
+  }
+
+  state.isDragging = true;
+
+  // お題を fixed 配置にして指（中心）に追従させる
+  dragEl.classList.add('dragging');
+  dragEl.style.position = 'fixed';
+  moveDragEl(clientX, clientY);
+}
+
+// ドラッグ中の位置更新
+function onDragMove(clientX, clientY) {
+  if (!state.isDragging) return;
+  moveDragEl(clientX, clientY);
+
+  // スロットカードのホバーハイライト
+  const slots = document.querySelectorAll('.slot-card');
+  slots.forEach(card => {
+    const dist = distToCenter(card, clientX, clientY);
+    if (dist < SNAP_DISTANCE * 1.3) {
+      card.classList.add('hover');
+    } else {
+      card.classList.remove('hover');
+    }
+  });
+}
+
+// ドロップ時の共通処理
+function onDragEnd(clientX, clientY) {
+  if (!state.isDragging) return;
+  state.isDragging = false;
+
+  // 全ホバー解除
+  document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('hover'));
+
+  // 最近傍スロットを探す
+  let nearest = null;
+  let nearDist = Infinity;
+  document.querySelectorAll('.slot-card').forEach(card => {
+    const d = distToCenter(card, clientX, clientY);
+    if (d < nearDist) {
+      nearDist = d;
+      nearest  = card;
+    }
+  });
+
+  if (nearest && nearDist <= SNAP_DISTANCE) {
+    // スナップ範囲内 → 正解/不正解判定
+    if (nearest.dataset.shape === state.currentShape) {
+      onCorrect();
+    } else {
+      onWrong(nearest);
+    }
+  } else {
+    // 範囲外 → お題を元の位置に戻す
+    resetDragEl();
+  }
+}
+
+// お題を指の位置に移動
+// clientX/Y からドラッグ開始オフセットを引いて「指のちょうど下」に中心を合わせる
+function moveDragEl(clientX, clientY) {
+  // 中心を指の位置に合わせる（SVGは 200px なので 100px オフセット）
+  const cx = clientX - 100;
+  const cy = clientY - 100;
+  dragEl.style.left      = `${cx}px`;
+  dragEl.style.top       = `${cy}px`;
+  dragEl.style.transform = 'scale(1.08)';
+}
+
+// お題を元の表示位置に戻す
+function resetDragEl() {
+  dragEl.classList.remove('dragging');
+  dragEl.style.position  = '';
+  dragEl.style.left      = '';
+  dragEl.style.top       = '';
+  dragEl.style.transform = '';
+}
+
+// 要素の中心とポインタ座標の距離
+function distToCenter(el, cx, cy) {
+  const rect = el.getBoundingClientRect();
+  const elCx = rect.left + rect.width  / 2;
+  const elCy = rect.top  + rect.height / 2;
+  return Math.hypot(cx - elCx, cy - elCy);
+}
+
+/* ---- マウスイベント ---- */
+dragEl.addEventListener('mousedown', e => {
+  e.preventDefault();
+  onDragStart(e.clientX, e.clientY);
+});
+
+document.addEventListener('mousemove', e => {
+  onDragMove(e.clientX, e.clientY);
+});
+
+document.addEventListener('mouseup', e => {
+  onDragEnd(e.clientX, e.clientY);
+});
+
+/* ---- タッチイベント ---- */
+dragEl.addEventListener('touchstart', e => {
+  e.preventDefault();
+  const t = e.touches[0];
+  onDragStart(t.clientX, t.clientY);
+}, { passive: false });
+
+document.addEventListener('touchmove', e => {
+  if (!state.isDragging) return;
+  e.preventDefault();
+  const t = e.touches[0];
+  onDragMove(t.clientX, t.clientY);
+}, { passive: false });
+
+document.addEventListener('touchend', e => {
+  const t = e.changedTouches[0];
+  onDragEnd(t.clientX, t.clientY);
+});
+
+/* =====================================================
+   正解・不正解処理
+===================================================== */
+
+function onCorrect() {
+  if (state.blocked) return;
+  state.blocked = true;
+
+  playCorrectSound();
+
+  // スコア更新
+  state.score++;
+  state.levelProgress++;
+  updateScoreDisplay();
+
+  // お題を非表示
+  resetDragEl();
+  dragEl.style.opacity = '0';
+
+  // 正解エフェクト表示
+  showCorrectEffect(() => {
+    dragEl.style.opacity = '';
+    state.blocked = false;
+
+    // 5問でレベルアップ判定
+    if (state.levelProgress >= 5 && state.level < 2) {
+      doLevelUp();
+    } else {
+      nextQuestion();
+    }
+  });
+}
+
+function onWrong(card) {
+  if (state.blocked) return;
+  state.blocked = true;
+
+  playWrongSound();
+  resetDragEl();
+
+  // カードを赤くプルプル
+  card.classList.add('wrong');
+  setTimeout(() => {
+    card.classList.remove('wrong');
+    state.blocked = false;
+  }, 520);
+}
+
+/* =====================================================
+   正解エフェクト：紙吹雪 + キラキラ + 大きな⭐
+===================================================== */
+
+function showCorrectEffect(callback) {
+  const overlay = document.getElementById('correct-overlay');
+  overlay.classList.add('active');
+
+  // 紙吹雪を生成
+  spawnConfetti(overlay);
+  // キラキラを生成
+  spawnSparkles(overlay);
+
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    // 紙吹雪・キラキラを掃除
+    overlay.querySelectorAll('.confetti, .sparkle').forEach(el => el.remove());
+    // big-starのアニメリセット
+    const bs = document.getElementById('big-star');
+    bs.style.animation = 'none';
+    void bs.offsetWidth;
+    bs.style.animation = '';
+    callback();
+  }, 900);
+}
+
+// 紙吹雪（30枚）
+function spawnConfetti(parent) {
+  const colors = ['#FF4444','#3388FF','#FFD700','#33CC66','#FF66BB','#FF8833','#ffffff'];
+  for (let i = 0; i < 30; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left        = `${Math.random() * 100}%`;
+    el.style.background  = colors[Math.floor(Math.random() * colors.length)];
+    el.style.width       = `${8 + Math.random() * 10}px`;
+    el.style.height      = `${8 + Math.random() * 10}px`;
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+    const duration = 0.6 + Math.random() * 0.5;
+    const cx = (Math.random() - 0.5) * 160;
+    el.style.setProperty('--cx', `${cx}px`);
+    el.style.animationDuration = `${duration}s`;
+    el.style.animationDelay   = `${Math.random() * 0.15}s`;
+    parent.appendChild(el);
+  }
+}
+
+// キラキラ（12個）
+function spawnSparkles(parent) {
+  const emojis = ['✨','⭐','💫','🌟'];
+  for (let i = 0; i < 12; i++) {
+    const el = document.createElement('div');
+    el.className = 'sparkle';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left     = `${20 + Math.random() * 60}%`;
+    el.style.top      = `${20 + Math.random() * 60}%`;
+    const angle = Math.random() * Math.PI * 2;
+    const dist  = 60 + Math.random() * 100;
+    const tx = Math.cos(angle) * dist;
+    const ty = Math.sin(angle) * dist;
+    el.style.setProperty('--tx', `translate(${tx}px, ${ty}px) scale(0.2)`);
+    el.style.fontSize = `${22 + Math.random() * 20}px`;
+    el.style.animationDuration = `${0.5 + Math.random() * 0.4}s`;
+    el.style.animationDelay   = `${Math.random() * 0.1}s`;
+    parent.appendChild(el);
+  }
+}
+
+/* =====================================================
+   レベルアップ処理
+===================================================== */
+
+function doLevelUp() {
+  state.level = 2;
+  state.levelProgress = 0;
+  updateScoreDisplay();
+
+  const overlay = document.getElementById('levelup-overlay');
+  overlay.classList.add('active');
+
+  setTimeout(() => {
+    overlay.classList.remove('active');
+    overlay.style.animation = 'none';
+    void overlay.offsetWidth;
+    overlay.style.animation = '';
+    nextQuestion();
+  }, 1900);
+}
+
+/* =====================================================
+   次の問題へ
+===================================================== */
+
+function nextQuestion() {
+  generateQuestion();
+  renderQuestion();
+  renderSlots();
+}
+
+/* =====================================================
+   ゲーム初期化
+===================================================== */
+
+function initGame() {
+  loadHighscore();
+  updateScoreDisplay();
+  nextQuestion();
+}
+
+// DOMContentLoaded で開始
+document.addEventListener('DOMContentLoaded', initGame);
+</script>
+</body>
+</html>
