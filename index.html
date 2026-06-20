@@ -596,7 +596,8 @@ body {
   cursor: pointer;
   pointer-events: auto;
   touch-action: manipulation;
-  animation: bubbleFloat linear infinite;
+  /* fill-mode: both を付けてアニメ開始前も bottom: -120px が適用されるようにする */
+  animation: bubbleFloat linear infinite both;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1814,47 +1815,9 @@ let g2State = {
 };
 
 /** 泡オブジェクトを1つ生成する */
+/** ランダムな色で泡を1つ生成する（g2CreateBubbleWithColor の呼び出し糖衣） */
 function g2CreateBubble() {
-  const colorDef = G2_COLORS[Math.floor(Math.random() * G2_COLORS.length)];
-  const size = 60 + Math.random() * 40; // 60〜100px
-  const left = 5 + Math.random() * 85;  // 画面幅の5〜90%
-  const duration = 8 + Math.random() * 7; // 8〜15秒
-
-  const el = document.createElement('div');
-  el.className = 'bubble';
-  el.style.width    = `${size}px`;
-  el.style.height   = `${size}px`;
-  el.style.left     = `${left}%`;
-  el.style.background = colorDef.grad;
-  el.style.boxShadow  = `inset 0 4px 12px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.2)`;
-  el.style.animationDuration = `${duration}s`;
-  el.style.animationDelay    = `${Math.random() * -duration * 0.8}s`;
-
-  // 光沢用の疑似要素をdivで代替
-  const shine = document.createElement('div');
-  shine.style.cssText = `
-    position:absolute; width:30%; height:30%;
-    top:15%; left:20%;
-    background:radial-gradient(circle, rgba(255,255,255,0.8), transparent);
-    border-radius:50%;
-    pointer-events:none;
-  `;
-  el.appendChild(shine);
-
-  // タップ/クリックハンドラ
-  el.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    ensureAudioCtx();
-    g2OnBubbleTap(el, colorDef.key);
-  }, { passive: false });
-
-  const bubble = { el, colorKey: colorDef.key };
-  g2State.bubbles.push(bubble);
-
-  const area = document.getElementById('g2-bubble-area');
-  if (area) area.appendChild(el);
-
-  return bubble;
+  return g2CreateBubbleWithColor(null);
 }
 
 /** 泡をタップしたとき */
@@ -1899,6 +1862,10 @@ function g2NextMission() {
   g2State.mission = G2_MISSIONS[g2State.missionIdx];
   g2State.popped  = 0;
   g2UpdateMissionDisplay();
+  // 新しいお題の色の泡を必ず2個すぐに補充する
+  const newTargetKey = G2_COLORS[g2State.mission.colorIdx].key;
+  g2CreateBubbleWithColor(newTargetKey);
+  g2CreateBubbleWithColor(newTargetKey);
 }
 
 /** お題テキストを更新 */
@@ -1909,6 +1876,66 @@ function g2UpdateMissionDisplay() {
   const countEl = document.getElementById('g2-count-display');
   if (textEl) textEl.innerHTML = `<span style="color:${cDef.hex};font-size:1.1em;">●</span> ${cDef.label} あわを ${m.count}つ はじこう！`;
   if (countEl) countEl.textContent = `${g2State.popped} / ${m.count}`;
+}
+
+/**
+ * お題の色の泡を指定して生成する
+ * @param {string} forceColorKey - 強制する色キー（省略時はランダム）
+ */
+function g2CreateBubbleWithColor(forceColorKey) {
+  // 強制する色があればその色定義を使い、なければランダム
+  let colorDef;
+  if (forceColorKey) {
+    colorDef = G2_COLORS.find(c => c.key === forceColorKey) || G2_COLORS[Math.floor(Math.random() * G2_COLORS.length)];
+  } else {
+    colorDef = G2_COLORS[Math.floor(Math.random() * G2_COLORS.length)];
+  }
+
+  const size = 60 + Math.random() * 40;
+  const left = 5 + Math.random() * 85;
+  const duration = 8 + Math.random() * 7;
+
+  const el = document.createElement('div');
+  el.className = 'bubble';
+  el.style.width    = `${size}px`;
+  el.style.height   = `${size}px`;
+  el.style.left     = `${left}%`;
+  el.style.background = colorDef.grad;
+  el.style.boxShadow  = `inset 0 4px 12px rgba(255,255,255,0.5), 0 4px 12px rgba(0,0,0,0.2)`;
+  el.style.animationDuration = `${duration}s`;
+  el.style.animationDelay    = `0s`;
+  el.style.animationFillMode = 'forwards';
+  el.dataset.color = colorDef.key;
+
+  const shine = document.createElement('div');
+  shine.style.cssText = `
+    position:absolute; width:30%; height:30%;
+    top:15%; left:20%;
+    background:radial-gradient(circle, rgba(255,255,255,0.8), transparent);
+    border-radius:50%;
+    pointer-events:none;
+  `;
+  el.appendChild(shine);
+
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    ensureAudioCtx();
+    g2OnBubbleTap(el, colorDef.key);
+  }, { passive: false });
+
+  const bubble = { el, colorKey: colorDef.key, done: false };
+  g2State.bubbles.push(bubble);
+
+  const area = document.getElementById('g2-bubble-area');
+  if (area) area.appendChild(el);
+
+  el.addEventListener('animationend', () => {
+    bubble.done = true;
+    if (el.parentNode) el.parentNode.removeChild(el);
+    g2State.bubbles = g2State.bubbles.filter(b => b !== bubble);
+  });
+
+  return bubble;
 }
 
 /** ゲーム2初期化 */
@@ -1927,16 +1954,31 @@ function initGame2() {
   g2UpdateMissionDisplay();
   bindVolumeControl('g2-vol-btn','g2-vol-panel','g2-vol-slider','g2-vol-pct');
 
-  // 初期泡を6個生成
-  for (let i = 0; i < 6; i++) g2CreateBubble();
+  // 初期泡を8個生成（お題の色を必ず2個含める）
+  const targetKey = G2_COLORS[g2State.mission.colorIdx].key;
+  // お題色を2個必ず含める
+  for (let i = 0; i < 2; i++) g2CreateBubbleWithColor(targetKey);
+  // 残り6個はランダム（お題色が偶然混ざるのはOK）
+  for (let i = 0; i < 6; i++) g2CreateBubbleWithColor(null);
 
   // 定期的に泡を補充（常に5〜8個を維持）
   g2State.spawnTimer = setInterval(() => {
     if (currentScreen !== 'game2') return;
-    // 画面上に残っている泡の数をカウント
-    const alive = g2State.bubbles.filter(b => b.el && b.el.parentNode).length;
-    if (alive < 5) g2CreateBubble();
-  }, 2000);
+    // done フラグが立っていない（まだ浮遊中）の泡だけをカウント
+    const alive = g2State.bubbles.filter(b => !b.done).length;
+    if (alive < 5) {
+      // お題の色がほぼない場合は必ずお題色を1個補充
+      const currentTarget = G2_COLORS[g2State.mission.colorIdx].key;
+      const targetAlive = g2State.bubbles.filter(b => !b.done && b.colorKey === currentTarget).length;
+      // お題色が0個なら1個確定で補充、それ以外はランダム補充
+      if (targetAlive === 0) {
+        g2CreateBubbleWithColor(currentTarget);
+      } else {
+        g2CreateBubbleWithColor(null);
+      }
+      g2CreateBubbleWithColor(null);
+    }
+  }, 1500);
 }
 
 /* =====================================================
@@ -2043,12 +2085,16 @@ function g3OnChoice(animal, btn) {
 function g3SpeakSound() {
   if (!g3State.answer) return;
   if (!window.speechSynthesis) return;
+  // cancel() 直後に speak() するとモバイルSafariで無視されるため
+  // 少し遅延を入れてから speak() を呼ぶ
   window.speechSynthesis.cancel();
-  const utter = new SpeechSynthesisUtterance(g3State.answer.sound);
-  utter.lang  = 'ja-JP';
-  utter.rate  = 0.85;
-  utter.pitch = 1.2;
-  window.speechSynthesis.speak(utter);
+  setTimeout(() => {
+    const utter = new SpeechSynthesisUtterance(g3State.answer.sound);
+    utter.lang  = 'ja-JP';
+    utter.rate  = 0.85;
+    utter.pitch = 1.2;
+    window.speechSynthesis.speak(utter);
+  }, 80);
 }
 
 /** ゲーム3初期化 */
