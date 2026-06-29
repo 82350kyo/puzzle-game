@@ -1380,7 +1380,7 @@ function g4SpawnLoop(){
       background:radial-gradient(circle at 35% 35%,rgba(255,255,255,0.85),rgba(255,255,255,0.3) 30%,${color} 60%,rgba(0,0,0,0.05));
       border:2px solid rgba(255,255,255,0.6);
       --rise-dur:${dur}s;
-      --rise-dist:${90+Math.random()*30}vh;
+      --rise-dist:-${90+Math.random()*30}vh;
       box-shadow:inset -4px -4px 8px rgba(0,0,0,0.08);
     `;
     b.onclick=()=>popBubble(b);
