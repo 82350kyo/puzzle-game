@@ -1,1700 +1,1607 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#87CEEB">
-  <title>あそぼう！</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    /* ===== CSS変数（デザインシステム） ===== */
-    :root {
-      --font: "M PLUS Rounded 1c", "Hiragino Maru Gothic ProN", "ヒラギノ丸ゴ Pro", sans-serif;
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>コロのもりのあそびば</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* =============================================
+   リセット・基本設定
+============================================= */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{width:100%;height:100%;overflow:hidden;touch-action:none;}
+body{
+  font-family:'Noto Sans JP','Hiragino Maru Gothic ProN',sans-serif;
+  background:#D4EDFF;
+  display:flex;justify-content:center;align-items:center;
+}
 
-      /* ゲーム別カラー */
-      --c-game1: #FF8C69; --c-game1-dk: #CC5030;
-      --c-game2: #9B59F7; --c-game2-dk: #6A2FCC;
-      --c-game3: #FF6B9D; --c-game3-dk: #CC3D70;
-      --c-game4: #54C7E8; --c-game4-dk: #2898B8;
-      --c-game5: #FF9E44; --c-game5-dk: #CC6C0E;
+/* =============================================
+   アプリコンテナ（最大幅430px）
+============================================= */
+#app{
+  position:relative;
+  width:100vw;height:100vh;
+  max-width:430px;
+  overflow:hidden;
+  background:linear-gradient(180deg,#D4EDFF 0%,#E8F5D0 100%);
+}
 
-      /* フィードバック */
-      --c-correct: #4CC882;
-      --c-incorrect: #FF9E44; /* 赤はNG。オレンジ系で */
-      --c-star: #FFD166;
+/* =============================================
+   画面共通
+============================================= */
+.screen{
+  position:absolute;inset:0;
+  display:none;flex-direction:column;
+  align-items:center;justify-content:flex-start;
+  overflow:hidden;
+}
+.screen.active{display:flex;}
 
-      /* イージング */
-      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-      --ease-smooth: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+/* =============================================
+   トップバー
+============================================= */
+#topbar{
+  position:absolute;top:0;left:0;right:0;z-index:500;
+  padding:10px 14px 0;
+  justify-content:space-between;
+  pointer-events:none;
+  max-width:430px;
+}
+.btn-icon{
+  pointer-events:auto;
+  width:52px;height:52px;
+  border-radius:50%;border:none;
+  background:rgba(255,255,255,0.9);
+  font-size:24px;cursor:pointer;
+  box-shadow:0 3px 10px rgba(0,0,0,0.2);
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .15s;
+}
+.btn-icon:active{transform:scale(0.88);}
 
-      /* タップ領域最小値（3歳向け） */
-      --tap-min: 80px;
-    }
+/* =============================================
+   ホーム画面 背景
+============================================= */
+#sc-home{
+  background:linear-gradient(180deg,#87CEEB 0%,#B8E4FF 35%,#D4EDFF 60%,#E8F5D0 80%,#C8E6A0 100%);
+  overflow-y:auto;
+}
+/* 雲 */
+.cloud{
+  position:absolute;pointer-events:none;
+  border-radius:50px;
+  background:rgba(255,255,255,0.85);
+  filter:blur(1px);
+}
+.cloud-1{width:90px;height:36px;top:8%;animation:cloudDrift 18s linear infinite;}
+.cloud-2{width:120px;height:44px;top:14%;animation:cloudDrift 24s linear infinite 6s;}
+.cloud-3{width:70px;height:28px;top:5%;animation:cloudDrift 20s linear infinite 12s;}
+@keyframes cloudDrift{
+  from{transform:translateX(110vw);}
+  to{transform:translateX(-200px);}
+}
 
-    /* ===== 共通リセット ===== */
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-    }
-    html, body {
-      width: 100%;
-      height: 100%;
-      overflow: hidden;
-      font-family: var(--font);
-    }
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: #6BAED6;
-    }
-    /* アプリコンテナ（縦長スマホ想定） */
-    #app {
-      position: relative;
-      width: 100%;
-      max-width: 430px;
-      height: 100svh;
-      overflow: hidden;
-      background: #FFF9F0;
-    }
-    /* 各画面 */
-    .screen {
-      position: absolute;
-      inset: 0;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      height: 100%;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-    .screen.active { display: flex; }
+/* =============================================
+   コロ（たぬきのCSSアート）- ホーム画面
+============================================= */
+.koro-home-wrap{
+  position:relative;
+  margin-top:10px;
+  animation:koroFloat 4s ease-in-out infinite;
+}
+@keyframes koroFloat{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-8px);}
+}
+.koro-home{
+  position:relative;
+  width:130px;height:140px;
+  margin:0 auto;
+}
+/* 葉っぱ */
+.koro-leaf{
+  position:absolute;top:-18px;left:50%;transform:translateX(-50%);
+  font-size:28px;
+  animation:koroLeafWave 2.5s ease-in-out infinite;
+  transform-origin:50% 100%;
+}
+@keyframes koroLeafWave{
+  0%,100%{transform:translateX(-50%) rotate(-8deg);}
+  50%{transform:translateX(-50%) rotate(8deg);}
+}
+/* 頭・体 */
+.koro-body{
+  position:absolute;
+  bottom:0;left:50%;transform:translateX(-50%);
+  width:90px;height:100px;
+  background:radial-gradient(ellipse at 50% 40%,#FFF8EC,#F5E6C3);
+  border-radius:50% 50% 45% 45%;
+  box-shadow:inset 0 -8px 16px rgba(0,0,0,0.06);
+}
+/* タヌキ模様（胸のパッチ） */
+.koro-body::after{
+  content:'';
+  position:absolute;
+  bottom:18px;left:50%;transform:translateX(-50%);
+  width:52px;height:38px;
+  background:radial-gradient(ellipse,#E8DDD0,#D8CCBC);
+  border-radius:50%;
+}
+/* 頭 */
+.koro-head{
+  position:absolute;
+  top:0;left:50%;transform:translateX(-50%);
+  width:100px;height:96px;
+  background:radial-gradient(ellipse at 50% 45%,#F5DFB0,#EECF90);
+  border-radius:50%;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+}
+/* 耳（左右） */
+.koro-ear{
+  position:absolute;
+  width:30px;height:32px;
+  background:#F5DFB0;
+  border-radius:50% 50% 40% 40%;
+  top:-10px;
+}
+.koro-ear.left{left:-6px;transform:rotate(-15deg);}
+.koro-ear.right{right:-6px;transform:rotate(15deg);}
+/* 耳の内側 */
+.koro-ear::after{
+  content:'';
+  position:absolute;
+  width:16px;height:18px;
+  background:#F7B8A2;
+  border-radius:50% 50% 40% 40%;
+  top:4px;left:50%;transform:translateX(-50%);
+}
+/* タヌキの縞（顔のマーク） */
+.koro-mask{
+  position:absolute;
+  width:56px;height:24px;
+  background:rgba(80,50,20,0.18);
+  border-radius:50%;
+  top:44px;left:50%;transform:translateX(-50%);
+}
+/* 目 */
+.koro-eyes{
+  position:absolute;
+  top:30px;left:50%;transform:translateX(-50%);
+  width:70px;display:flex;justify-content:space-between;
+}
+.koro-eye{
+  width:22px;height:24px;
+  background:#1a1a2e;
+  border-radius:50%;
+  position:relative;
+}
+.koro-eye::after{
+  content:'';
+  position:absolute;
+  width:7px;height:7px;
+  background:#fff;
+  border-radius:50%;
+  top:3px;right:3px;
+}
+/* 鼻 */
+.koro-nose{
+  position:absolute;
+  width:16px;height:10px;
+  background:#C0724A;
+  border-radius:50%;
+  top:58px;left:50%;transform:translateX(-50%);
+}
+/* ほっぺ */
+.koro-cheek{
+  position:absolute;
+  width:22px;height:14px;
+  background:rgba(244,168,138,0.5);
+  border-radius:50%;
+  top:54px;
+}
+.koro-cheek.left{left:8px;}
+.koro-cheek.right{right:8px;}
+/* しっぽ */
+.koro-tail{
+  position:absolute;
+  bottom:-14px;right:-20px;
+  width:40px;height:28px;
+  background:linear-gradient(#F5DFB0 40%,#8B6914 40%,#8B6914 60%,#F5DFB0 60%);
+  border-radius:50%;
+  transform-origin:20% 80%;
+  animation:koroTailWag 3s ease-in-out infinite;
+}
+@keyframes koroTailWag{
+  0%,100%{transform:rotate(-12deg);}
+  50%{transform:rotate(12deg);}
+}
 
-    /* ===== 共通ボタン ===== */
-    .btn-main {
-      padding: 16px 40px;
-      border-radius: 100px;
-      border: none;
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 20px;
-      font-weight: 900;
-      color: white;
-      background: linear-gradient(180deg, #FF9F1C, #FF6B00);
-      box-shadow: 0 6px 0 #CC4400, 0 8px 20px rgba(255,107,0,0.3);
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
-      touch-action: manipulation;
-    }
-    .btn-main:active {
-      transform: translateY(4px);
-      box-shadow: 0 2px 0 #CC4400;
-    }
-    .btn-sub {
-      padding: 14px 32px;
-      border-radius: 100px;
-      border: none;
-      cursor: pointer;
-      font-family: var(--font);
-      font-size: 18px;
-      font-weight: 800;
-      color: white;
-      background: linear-gradient(180deg, #AAB8C8, #8899AA);
-      box-shadow: 0 5px 0 #667788;
-      transition: transform 0.1s ease, box-shadow 0.1s ease;
-      touch-action: manipulation;
-    }
-    .btn-sub:active {
-      transform: translateY(3px);
-      box-shadow: 0 2px 0 #667788;
-    }
+/* =============================================
+   タイトル
+============================================= */
+.home-title{
+  font-size:28px;font-weight:900;
+  background:linear-gradient(90deg,#FF6B6B,#FFB347,#FFD700,#7BC67E,#6BB5FF,#C78FFF);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  text-align:center;letter-spacing:2px;
+  animation:titleBounce 2.5s ease-in-out infinite;
+  padding:0 10px;
+  margin-top:8px;
+}
+.home-sub{font-size:15px;color:#5a8a3a;font-weight:700;margin-top:2px;text-align:center;}
+@keyframes titleBounce{
+  0%,100%{transform:translateY(0);}
+  50%{transform:translateY(-4px);}
+}
 
-    /* ===== アイコンボタン（トップバー） ===== */
-    .icon-btn {
-      width: 80px;
-      height: 80px;
-      border-radius: 50%;
-      border: none;
-      cursor: pointer;
-      background: rgba(255,255,255,0.92);
-      font-size: 28px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.15), 0 6px 12px rgba(0,0,0,0.1);
-      touch-action: manipulation;
-    }
-    .icon-btn:active {
-      transform: translateY(3px);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.15);
-    }
+/* =============================================
+   ゲームカードグリッド
+============================================= */
+.game-grid{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  padding:10px 16px 20px;
+  width:100%;
+}
+.game-card{
+  aspect-ratio:1;
+  border-radius:20px;
+  border:none;cursor:pointer;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:6px;
+  box-shadow:0 6px 0 rgba(0,0,0,0.2),0 8px 20px rgba(0,0,0,0.15);
+  transition:transform .1s,box-shadow .1s;
+  position:relative;overflow:hidden;
+  padding:8px 4px;
+}
+.game-card:active{transform:translateY(4px);box-shadow:0 2px 0 rgba(0,0,0,0.2),0 4px 10px rgba(0,0,0,0.15);}
+.game-card-emoji{font-size:36px;line-height:1;}
+.game-card-label{
+  font-size:11px;font-weight:700;color:#fff;
+  text-shadow:0 1px 3px rgba(0,0,0,0.4);
+  text-align:center;line-height:1.2;
+}
+.gc1{background:linear-gradient(145deg,#FF8A65,#F4511E);}
+.gc2{background:linear-gradient(145deg,#66BB6A,#2E7D32);}
+.gc3{background:linear-gradient(145deg,#CE93D8,#7B1FA2);}
+.gc4{background:linear-gradient(145deg,#4FC3F7,#0277BD);}
+.gc5{background:linear-gradient(145deg,#FFB74D,#E65100);}
+.gc6{background:linear-gradient(145deg,#F48FB1,#C2185B);}
 
-    /* ===== トップバー ===== */
-    #topbar {
-      display: none;
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 500;
-      padding: 12px 16px 0;
-      justify-content: space-between;
-      pointer-events: none;
-      max-width: 430px;
-    }
-    #topbar .icon-btn { pointer-events: auto; }
+/* =============================================
+   共通ボタン
+============================================= */
+.btn-main{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:16px 32px;border-radius:50px;border:none;cursor:pointer;
+  font-family:'Noto Sans JP',sans-serif;
+  font-size:20px;font-weight:900;
+  background:linear-gradient(145deg,#66BB6A,#388E3C);
+  color:#fff;
+  box-shadow:0 6px 0 #1B5E20,0 8px 20px rgba(0,0,0,0.2);
+  transition:transform .1s,box-shadow .1s;
+  min-width:160px;min-height:56px;
+  text-decoration:none;
+}
+.btn-main:active{transform:translateY(4px);box-shadow:0 2px 0 #1B5E20,0 4px 10px rgba(0,0,0,0.15);}
+.btn-main.orange{background:linear-gradient(145deg,#FFB74D,#F57C00);box-shadow:0 6px 0 #E65100,0 8px 20px rgba(0,0,0,0.2);}
+.btn-main.orange:active{box-shadow:0 2px 0 #E65100,0 4px 10px rgba(0,0,0,0.15);}
+.btn-main.purple{background:linear-gradient(145deg,#CE93D8,#7B1FA2);box-shadow:0 6px 0 #4A148C,0 8px 20px rgba(0,0,0,0.2);}
+.btn-main.purple:active{box-shadow:0 2px 0 #4A148C,0 4px 10px rgba(0,0,0,0.15);}
+.btn-back{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:12px 20px;border-radius:50px;border:none;cursor:pointer;
+  font-size:18px;font-weight:700;
+  background:rgba(255,255,255,0.85);color:#555;
+  box-shadow:0 4px 0 rgba(0,0,0,0.12);
+  min-height:52px;
+}
+.btn-back:active{transform:translateY(3px);}
 
-    /* ===== ホーム画面 ===== */
-    .sky-bg {
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(180deg, #87CEEB 0%, #B0DCF0 40%, #C8F0B0 70%, #88CC70 100%);
-      z-index: 0;
-    }
-    /* 雲のアニメーション */
-    .cloud {
-      position: absolute;
-      font-size: 50px;
-      opacity: 0.85;
-      animation: cloud-float 8s ease-in-out infinite;
-    }
-    .c1 { top: 12%; left: 5%; animation-duration: 9s; }
-    .c2 { top: 20%; right: 8%; animation-duration: 11s; animation-direction: reverse; }
-    .c3 { top: 8%; left: 45%; animation-duration: 13s; }
-    @keyframes cloud-float {
-      0%, 100% { transform: translateX(0); }
-      50% { transform: translateX(20px); }
-    }
-    /* ホームヘッダー */
-    .home-header {
-      position: relative;
-      z-index: 1;
-      text-align: center;
-      padding: 50px 20px 10px;
-    }
-    .home-label {
-      font-size: 13px;
-      color: rgba(255,255,255,0.9);
-      font-weight: 700;
-      letter-spacing: 2px;
-    }
-    /* タイトル（レインボーグラデーション） */
-    .home-title {
-      font-size: 54px;
-      font-weight: 900;
-      line-height: 1;
-      background: linear-gradient(135deg, #FF6B6B, #FFD93D, #6BCB77, #4D96FF);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      filter: drop-shadow(2px 3px 0 rgba(0,0,0,0.15));
-      animation: title-bounce 2.5s ease-in-out infinite;
-    }
-    @keyframes title-bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-8px); }
-    }
-    /* ゲームカードグリッド（2列） */
-    .game-grid {
-      position: relative;
-      z-index: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      padding: 10px 20px 30px;
-      width: 100%;
-    }
-    /* ゲームカード（立体ボタン） */
-    .game-card {
-      border-radius: 28px;
-      padding: 20px 12px 16px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 8px 0 rgba(0,0,0,0.2), 0 12px 24px rgba(0,0,0,0.12);
-      transition: transform 0.12s var(--ease-spring), box-shadow 0.12s ease;
-      touch-action: manipulation;
-      min-height: 130px;
-      justify-content: center;
-    }
-    /* カード上部に光沢エフェクト */
-    .game-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 45%;
-      background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, transparent 100%);
-      border-radius: 28px 28px 0 0;
-      pointer-events: none;
-    }
-    .game-card:active {
-      transform: translateY(6px) scale(0.96);
-      box-shadow: 0 2px 0 rgba(0,0,0,0.2), 0 4px 8px rgba(0,0,0,0.1);
-    }
-    .card-emoji {
-      font-size: 52px;
-      line-height: 1;
-      filter: drop-shadow(0 3px 4px rgba(0,0,0,0.15));
-    }
-    .card-name {
-      font-size: 15px;
-      font-weight: 900;
-      color: rgba(0,0,0,0.75);
-      text-align: center;
-      line-height: 1.3;
-    }
-    /* ゲームカードの色分け */
-    [data-game="1"] { background: linear-gradient(145deg, #FFB347, #FF8C00); }
-    [data-game="2"] { background: linear-gradient(145deg, #B78FFF, #7B52E0); }
-    [data-game="3"] { background: linear-gradient(145deg, #FF8FAF, #E0527A); }
-    [data-game="4"] { background: linear-gradient(145deg, #6FD8F0, #3DAFC0); }
-    [data-game="5"] { background: linear-gradient(145deg, #FFC06B, #FF8A00); }
+/* =============================================
+   難易度選択画面（共通）
+============================================= */
+.diff-screen{
+  background:linear-gradient(160deg,#FFE0B2,#FFCC80);
+}
+.diff-title{
+  font-size:24px;font-weight:900;color:#5D4037;
+  margin-top:70px;margin-bottom:20px;text-align:center;
+}
+.diff-btns{
+  display:flex;flex-direction:column;gap:14px;
+  width:100%;padding:0 32px;
+}
+.diff-btn{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;height:72px;
+  border-radius:36px;border:none;cursor:pointer;
+  font-size:20px;font-weight:900;color:#fff;
+  box-shadow:0 5px 0 rgba(0,0,0,0.2);
+  transition:transform .1s,box-shadow .1s;
+}
+.diff-btn:active{transform:translateY(4px);box-shadow:0 1px 0 rgba(0,0,0,0.2);}
+.diff-btn.easy{background:linear-gradient(135deg,#66BB6A,#388E3C);}
+.diff-btn.normal{background:linear-gradient(135deg,#42A5F5,#1565C0);}
+.diff-btn.hard{background:linear-gradient(135deg,#AB47BC,#6A1B9A);}
 
-    /* ===== 難易度選択ボタン ===== */
-    .diff-btn {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      padding: 18px 24px;
-      border-radius: 24px;
-      border: none;
-      cursor: pointer;
-      background: white;
-      font-family: var(--font);
-      width: 100%;
-      box-shadow: 0 4px 0 rgba(0,0,0,0.12), 0 6px 16px rgba(0,0,0,0.08);
-      transition: transform 0.12s var(--ease-spring), box-shadow 0.12s ease;
-      touch-action: manipulation;
-    }
-    .diff-btn:active {
-      transform: translateY(4px) scale(0.97);
-      box-shadow: 0 1px 0 rgba(0,0,0,0.1);
-    }
-    .diff-stars { font-size: 22px; min-width: 72px; }
-    .diff-label { font-size: 20px; font-weight: 900; color: #3D2C1E; flex: 1; text-align: left; }
-    .diff-count { font-size: 14px; color: #7A6352; font-weight: 600; }
+/* =============================================
+   Game1: きおくカード
+============================================= */
+#sc-g1-play{background:linear-gradient(160deg,#1A237E,#283593,#3949AB);}
+.g1-header{
+  width:100%;padding:60px 16px 10px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.g1-title{font-size:20px;font-weight:900;color:#FFD700;}
+.g1-moves{font-size:18px;font-weight:700;color:#B0BEC5;}
+.mem-grid{
+  display:grid;gap:8px;
+  padding:10px 12px;
+  width:100%;flex:1;
+  align-content:center;
+}
+.mem-card{
+  perspective:700px;cursor:pointer;
+}
+.mem-inner{
+  width:100%;height:100%;
+  position:relative;transform-style:preserve-3d;
+  transition:transform .45s cubic-bezier(0.34,1.56,0.64,1);
+  border-radius:14px;
+}
+.mem-card.flipped .mem-inner{transform:rotateY(180deg);}
+.mem-card.matched .mem-inner{transform:rotateY(180deg);}
+.mem-back,.mem-front{
+  position:absolute;inset:0;
+  border-radius:14px;
+  backface-visibility:hidden;
+  display:flex;align-items:center;justify-content:center;
+}
+.mem-back{
+  background:linear-gradient(135deg,#1A237E,#283593);
+  border:3px solid #5C6BC0;
+  font-size:24px;
+}
+.mem-front{
+  background:linear-gradient(135deg,#FFF8EC,#FFF3DC);
+  border:3px solid #FFD700;
+  transform:rotateY(180deg);
+  font-size:40px;
+}
+.mem-card.matched .mem-front{
+  border-color:#66BB6A;
+  background:linear-gradient(135deg,#E8F5E9,#C8E6C9);
+  animation:matchedPulse .5s cubic-bezier(0.34,1.56,0.64,1);
+}
+@keyframes matchedPulse{
+  0%{transform:rotateY(180deg) scale(1);}
+  50%{transform:rotateY(180deg) scale(1.18);}
+  100%{transform:rotateY(180deg) scale(1);}
+}
+.mem-card.shake{animation:shake .4s;}
+@keyframes shake{
+  0%,100%{transform:translateX(0);}
+  25%{transform:translateX(-6px);}
+  75%{transform:translateX(6px);}
+}
 
-    /* ===== 神経衰弱カード ===== */
-    .mem-card {
-      border-radius: 16px;
-      cursor: pointer;
-      perspective: 600px;
-      touch-action: manipulation;
-    }
-    .mem-card-inner {
-      width: 100%;
-      height: 100%;
-      position: relative;
-      transform-style: preserve-3d;
-      transition: transform 0.4s ease;
-      border-radius: 16px;
-    }
-    /* カードがめくれた状態 */
-    .mem-card.flipped .mem-card-inner { transform: rotateY(180deg); }
-    .mem-card-front, .mem-card-back {
-      position: absolute;
-      inset: 0;
-      border-radius: 16px;
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    /* カード裏面（星模様） */
-    .mem-card-back {
-      background: linear-gradient(135deg, #5B2D8E, #3D1F6B);
-      box-shadow: inset 0 0 0 2px rgba(255,255,255,0.15);
-      font-size: 40px;
-    }
-    /* カード表面（絵柄） */
-    .mem-card-front {
-      background: #FFFEF5;
-      transform: rotateY(180deg);
-      font-size: 54px;
-      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.06);
-    }
-    /* マッチ成立時：緑でハイライト */
-    .mem-card.matched .mem-card-front {
-      background: #F0FFF4;
-      box-shadow: 0 0 0 3px var(--c-correct), 0 0 15px rgba(76,200,130,0.4);
-    }
-    /* ミスマッチ時：シェイクアニメーション */
-    .mem-card.wrong { animation: wrong-shake 0.3s ease; }
-    @keyframes wrong-shake {
-      0%, 100% { transform: translateX(0); }
-      20% { transform: translateX(-4px); }
-      40% { transform: translateX(4px); }
-      60% { transform: translateX(-3px); }
-      80% { transform: translateX(3px); }
-    }
+/* =============================================
+   Game2: めいろ
+============================================= */
+#sc-g2-play{background:#1B5E20;}
+.g2-wrap{
+  flex:1;width:100%;
+  display:flex;align-items:center;justify-content:center;
+  margin-top:60px;padding:10px;
+}
+#g2-canvas{
+  border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4);
+  display:block;
+  touch-action:none;
+}
+#g2-koro-el{
+  position:fixed;pointer-events:none;z-index:200;
+  line-height:1;display:none;
+}
+#g2-koro-el.shake{animation:shake .4s;}
+.g2-stars-count{
+  font-size:22px;font-weight:900;color:#FFD700;
+  text-align:center;padding:6px;
+}
 
-    /* ===== クリア画面 ===== */
-    @keyframes clear-pop {
-      from { transform: scale(0.3) rotate(-10deg); opacity: 0; }
-      to   { transform: scale(1) rotate(0deg); opacity: 1; }
-    }
-    .clear-star {
-      display: inline-block;
-      font-size: 52px;
-      animation: clear-pop 0.5s var(--ease-spring) both;
-    }
+/* =============================================
+   Game3: パズル
+============================================= */
+#sc-g3-play{background:linear-gradient(160deg,#FCE4EC,#F8BBD0);}
+.g3-header{width:100%;padding:60px 16px 8px;text-align:center;}
+.g3-title{font-size:22px;font-weight:900;color:#880E4F;}
+.g3-preview{
+  width:180px;height:180px;
+  border-radius:16px;overflow:hidden;
+  margin:8px auto;
+  border:4px solid #F48FB1;
+  box-shadow:0 6px 20px rgba(0,0,0,0.2);
+}
+.g3-preview img{width:100%;height:100%;object-fit:cover;}
+.g3-board{
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:4px;width:200px;margin:10px auto;
+  background:#F8BBD0;border-radius:16px;padding:4px;
+}
+.g3-slot{
+  aspect-ratio:1;border-radius:12px;
+  background:rgba(255,255,255,0.4);
+  border:2px dashed #F48FB1;
+  position:relative;overflow:hidden;
+}
+.g3-slot.filled{border:2px solid #66BB6A;}
+.g3-pieces{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;
+  padding:10px 16px;
+}
+.g3-piece{
+  width:88px;height:88px;border-radius:12px;cursor:grab;
+  border:3px solid rgba(255,255,255,0.8);
+  box-shadow:0 4px 12px rgba(0,0,0,0.2);
+  background-size:200% 200%;
+  transition:transform .15s,box-shadow .15s;
+  user-select:none;-webkit-user-select:none;
+  touch-action:none;
+  position:relative;
+}
+.g3-piece:active,.g3-piece.dragging{
+  transform:scale(1.1) rotate(2deg);
+  box-shadow:0 12px 28px rgba(0,0,0,0.35);cursor:grabbing;z-index:300;
+}
+@keyframes snapSuccess{
+  0%{transform:scale(1.15);}60%{transform:scale(0.95);}100%{transform:scale(1);}
+}
 
-    /* ===== 紙吹雪アニメーション ===== */
-    @keyframes confetti-fall {
-      0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
-      100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
-    }
+/* =============================================
+   Game4: バブルはじき
+============================================= */
+#sc-g4-play{
+  background:linear-gradient(180deg,#E1F5FE 0%,#B3E5FC 60%,#81D4FA 100%);
+  overflow:hidden;
+}
+.g4-header{width:100%;padding:60px 16px 8px;text-align:center;}
+.g4-count{font-size:28px;font-weight:900;color:#01579B;}
+.g4-area{position:absolute;inset:0;pointer-events:none;}
+.bubble{
+  position:absolute;border-radius:50%;cursor:pointer;
+  pointer-events:auto;touch-action:manipulation;
+  will-change:transform;
+  animation:bubbleRise var(--rise-dur,4s) linear forwards;
+}
+@keyframes bubbleRise{
+  0%{transform:translateY(0) scale(1);opacity:1;}
+  100%{transform:translateY(var(--rise-dist,-120vh)) scale(.85);opacity:0;}
+}
+.bubble-pop{animation:pop .25s ease forwards!important;pointer-events:none;}
+@keyframes pop{
+  0%{transform:scale(1);opacity:1;}
+  60%{transform:scale(1.7);opacity:.7;}
+  100%{transform:scale(0);opacity:0;}
+}
+.score-float{
+  position:absolute;pointer-events:none;
+  font-size:24px;font-weight:900;color:#FFD700;
+  text-shadow:0 2px 4px rgba(0,0,0,0.3);
+  animation:scoreUp .8s ease forwards;
+  z-index:400;
+}
+@keyframes scoreUp{
+  0%{transform:translateY(0);opacity:1;}
+  100%{transform:translateY(-60px);opacity:0;}
+}
+.g4-wave{
+  position:absolute;bottom:0;left:0;right:0;height:60px;
+  background:linear-gradient(180deg,transparent,rgba(2,119,189,0.3));
+  pointer-events:none;
+}
+.g4-round-info{
+  font-size:18px;font-weight:700;color:#0277BD;margin-top:4px;
+}
 
-    /* ===== 横向き時の警告 ===== */
-    #rotate-notice {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: #3D2C1E;
-      color: white;
-      font-family: var(--font);
-      font-size: 24px;
-      font-weight: 800;
-      align-items: center;
-      justify-content: center;
-      flex-direction: column;
-      gap: 20px;
-      z-index: 9999;
-    }
-    @media (orientation: landscape) {
-      #app { display: none; }
-      #rotate-notice { display: flex; }
-    }
-  </style>
+/* =============================================
+   Game5: たべものあわせ
+============================================= */
+#sc-g5-play{background:linear-gradient(160deg,#FFF8E1,#FFE0B2);}
+.g5-wrap{width:100%;padding:60px 16px 10px;flex:1;display:flex;flex-direction:column;align-items:center;}
+.g5-animal-area{
+  width:100%;display:flex;flex-direction:column;gap:10px;
+  padding:0 8px;flex:1;
+}
+.g5-animal-row{
+  display:flex;align-items:center;gap:12px;
+  background:rgba(255,255,255,0.7);border-radius:20px;padding:10px 14px;
+  border:3px solid transparent;
+  transition:border-color .2s;
+  min-height:72px;
+}
+.g5-animal-row.selected{border-color:#1565C0;}
+.g5-animal-emoji{font-size:38px;min-width:46px;text-align:center;}
+.g5-animal-name{font-size:16px;font-weight:700;color:#5D4037;}
+.g5-line-svg{position:absolute;top:0;left:0;pointer-events:none;width:100%;height:100%;}
+.g5-food-area{
+  display:flex;flex-wrap:wrap;gap:10px;justify-content:center;
+  padding:10px 8px;
+}
+.g5-food-btn{
+  width:80px;height:80px;border-radius:20px;border:3px solid #FFB74D;
+  background:#fff;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  box-shadow:0 5px 0 #E65100;
+  transition:transform .1s,box-shadow .1s;font-family:inherit;
+}
+.g5-food-btn:active{transform:translateY(4px);box-shadow:0 1px 0 #E65100;}
+.g5-food-btn.matched-food{opacity:0.4;pointer-events:none;border-color:#aaa;box-shadow:none;}
+.g5-food-btn.wrong-flash{animation:wrongFlash .4s;}
+@keyframes wrongFlash{
+  0%,100%{border-color:#FFB74D;}50%{border-color:#FF9800;background:#FFF3E0;}
+}
+.g5-food-emoji{font-size:32px;}
+.g5-food-name{font-size:12px;font-weight:700;color:#5D4037;}
+
+/* =============================================
+   Game6: いろをぬろう
+============================================= */
+#sc-g6-play{background:linear-gradient(160deg,#F3E5F5,#E1BEE7);}
+.g6-header{width:100%;padding:60px 16px 4px;text-align:center;}
+.g6-title{font-size:20px;font-weight:900;color:#6A1B9A;}
+.g6-canvas-wrap{
+  display:flex;align-items:center;justify-content:center;
+  margin:6px auto;
+}
+#g6-svg{
+  width:260px;height:220px;
+  border-radius:16px;
+  background:#fff;
+  box-shadow:0 6px 20px rgba(0,0,0,0.15);
+  border:4px solid #CE93D8;
+}
+.g6-palette{
+  display:flex;flex-wrap:wrap;gap:10px;justify-content:center;
+  padding:8px 16px;
+}
+.g6-color-btn{
+  width:60px;height:60px;border-radius:50%;cursor:pointer;
+  border:4px solid rgba(255,255,255,0.6);
+  box-shadow:0 3px 8px rgba(0,0,0,0.2);
+  transition:transform .15s,border-color .15s;
+}
+.g6-color-btn:active{transform:scale(1.3);}
+.g6-color-btn.selected{border-color:#333;transform:scale(1.2);}
+.cr{cursor:pointer;transition:fill .15s;stroke:#333;stroke-width:2;}
+.cr:hover{opacity:.85;}
+.g6-next-btn{
+  margin-top:6px;
+  padding:14px 28px;border-radius:50px;border:none;cursor:pointer;
+  font-size:18px;font-weight:900;color:#fff;
+  background:linear-gradient(135deg,#AB47BC,#6A1B9A);
+  box-shadow:0 5px 0 #4A148C;
+}
+
+/* =============================================
+   クリア画面
+============================================= */
+#sc-clear{
+  background:linear-gradient(160deg,#FFFDE7,#FFF9C4);
+  align-items:center;justify-content:center;
+}
+.clear-inner{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:20px;text-align:center;z-index:10;
+}
+.clear-emoji{font-size:72px;animation:clearPop .5s cubic-bezier(0.34,1.56,0.64,1);}
+@keyframes clearPop{0%{transform:scale(0);}100%{transform:scale(1);}}
+.clear-title{
+  font-size:40px;font-weight:900;
+  background:linear-gradient(90deg,#FF6B6B,#FFD700,#7BC67E,#6BB5FF);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.clear-stars{font-size:44px;letter-spacing:8px;}
+.clear-btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:8px;}
+.confetti-piece{
+  position:fixed;width:12px;height:12px;
+  top:-20px;border-radius:2px;
+  animation:confettiFall var(--dur,2s) ease-in forwards;
+  pointer-events:none;z-index:999;
+}
+@keyframes confettiFall{
+  0%{transform:translateY(0) rotate(0deg);opacity:1;}
+  85%{opacity:1;}
+  100%{transform:translateY(110vh) rotate(var(--rot,360deg));opacity:0;}
+}
+
+/* =============================================
+   共通アニメーション・ユーティリティ
+============================================= */
+@keyframes popIn{0%{transform:scale(0);}60%{transform:scale(1.1);}100%{transform:scale(1);}}
+.pop-in{animation:popIn .3s cubic-bezier(0.34,1.56,0.64,1) forwards;}
+@keyframes slideInUp{from{transform:translateY(100%);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.slide-in-up{animation:slideInUp .35s cubic-bezier(0.25,0.46,0.45,0.94) forwards;}
+.msg-float{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:28px;font-weight:900;color:#fff;
+  background:rgba(0,0,0,0.6);
+  padding:16px 28px;border-radius:20px;
+  pointer-events:none;z-index:9999;
+  animation:msgFade 1.2s ease forwards;
+}
+@keyframes msgFade{0%{opacity:0;transform:translate(-50%,-60%);}20%{opacity:1;transform:translate(-50%,-50%);}80%{opacity:1;}100%{opacity:0;transform:translate(-50%,-40%);}}
+
+/* =============================================
+   地面ライン（ホーム）
+============================================= */
+.home-ground{
+  position:absolute;bottom:0;left:0;right:0;height:18%;
+  background:#C8E6A0;
+  pointer-events:none;
+}
+.home-ground::before{
+  content:'';position:absolute;top:-14px;left:0;right:0;height:16px;
+  background:radial-gradient(ellipse 20px 16px at 50% 100%,#C8E6A0 50%,transparent 50%) repeat-x;
+  background-size:40px 16px;
+}
+
+/* スクロールバー非表示 */
+::-webkit-scrollbar{display:none;}
+</style>
 </head>
 <body>
-  <!-- 横向き時の警告 -->
-  <div id="rotate-notice">
-    <div style="font-size: 48px">📱</div>
-    <div>たてにしてね！</div>
-  </div>
+<div id="app">
 
-  <div id="app">
-    <!-- ===== ホーム画面 ===== -->
-    <div class="screen" id="screen-home">
-      <!-- 空・草原の背景 -->
-      <div class="sky-bg">
-        <div class="cloud c1">☁️</div>
-        <div class="cloud c2">☁️</div>
-        <div class="cloud c3">⛅</div>
-      </div>
+  <!-- ========== ホーム画面 ========== -->
+  <div class="screen active" id="sc-home">
+    <!-- 雲 -->
+    <div class="cloud cloud-1" style="left:-120px"></div>
+    <div class="cloud cloud-2" style="left:-160px"></div>
+    <div class="cloud cloud-3" style="left:-90px"></div>
+    <div class="home-ground"></div>
 
-      <!-- タイトルエリア -->
-      <div class="home-header">
-        <p class="home-label">きっずあそびば</p>
-        <h1 class="home-title">あそぼう！</h1>
-      </div>
-
-      <!-- ゲームカードグリッド（2列） -->
-      <div class="game-grid">
-        <div class="game-card" data-game="1" onclick="showG1Diff()">
-          <div class="card-emoji">🐱</div>
-          <div class="card-name">きおく<br>カード</div>
+    <!-- コロキャラクター -->
+    <div class="koro-home-wrap" style="margin-top:16px">
+      <div class="koro-home">
+        <div class="koro-leaf">🌿</div>
+        <div class="koro-head">
+          <div class="koro-ear left"></div>
+          <div class="koro-ear right"></div>
+          <div class="koro-mask"></div>
+          <div class="koro-eyes">
+            <div class="koro-eye"></div>
+            <div class="koro-eye"></div>
+          </div>
+          <div class="koro-nose"></div>
+          <div class="koro-cheek left"></div>
+          <div class="koro-cheek right"></div>
         </div>
-        <div class="game-card" data-game="2" onclick="startG2()">
-          <div class="card-emoji">🔊</div>
-          <div class="card-name">だれの<br>こえかな？</div>
-        </div>
-        <div class="game-card" data-game="3" onclick="startG3()">
-          <div class="card-emoji">⭐</div>
-          <div class="card-name">かたち<br>パズル</div>
-        </div>
-        <div class="game-card" data-game="4" onclick="startG4()">
-          <div class="card-emoji">🥕</div>
-          <div class="card-name">えさを<br>あげよう</div>
-        </div>
-        <!-- 5番目は中央に配置 -->
-        <div class="game-card" data-game="5" onclick="startG5()" style="grid-column: 1/-1; max-width: 180px; margin: 0 auto;">
-          <div class="card-emoji">🔵</div>
-          <div class="card-name">いろの<br>ボール</div>
-        </div>
+        <div class="koro-body"></div>
+        <div class="koro-tail"></div>
       </div>
     </div>
 
-    <!-- ===== Game1: 神経衰弱 難易度選択画面 ===== -->
-    <div class="screen" id="screen-g1-diff" style="background: linear-gradient(160deg,#FFE8CC,#FFD4B0);">
-      <div style="padding:70px 24px 0; text-align:center; width:100%">
-        <div style="font-size:60px; margin-bottom:12px">🐱🐶🐻</div>
-        <h2 style="font-size:28px; font-weight:900; color:#3D2C1E; margin-bottom:6px">きおくカード</h2>
-        <p style="font-size:16px; color:#7A6352; margin-bottom:32px">どれかをえらんでね！</p>
+    <div class="home-title">コロのもりのあそびば</div>
+    <div class="home-sub">あそびたいゲームをえらんでね！</div>
 
-        <div style="display:flex; flex-direction:column; gap:16px; padding:0 20px">
-          <!-- やさしい（3ペア） -->
-          <button class="diff-btn" onclick="startG1('easy')">
-            <span class="diff-stars">⭐</span>
-            <span class="diff-label">やさしい</span>
-            <span class="diff-count">3ペア（6まい）</span>
-          </button>
-          <!-- ふつう（4ペア） -->
-          <button class="diff-btn" onclick="startG1('normal')">
-            <span class="diff-stars">⭐⭐</span>
-            <span class="diff-label">ふつう</span>
-            <span class="diff-count">4ペア（8まい）</span>
-          </button>
-          <!-- むずかしい（6ペア） -->
-          <button class="diff-btn" onclick="startG1('hard')">
-            <span class="diff-stars">⭐⭐⭐</span>
-            <span class="diff-label">むずかしい</span>
-            <span class="diff-count">6ペア（12まい）</span>
-          </button>
-        </div>
-
-        <button class="btn-sub" style="margin-top:24px" onclick="goHome()">もどる</button>
-      </div>
-    </div>
-
-    <!-- ===== Game1: 神経衰弱 プレイ画面 ===== -->
-    <div class="screen" id="screen-g1-play" style="background: linear-gradient(160deg, #FFF4E0, #FFE8CC);">
-      <div id="g1-board" style="display: grid; gap: 10px; padding: 80px 16px 20px; width: 100%;"></div>
-    </div>
-
-    <!-- ===== Game2: 音当て プレイ画面 ===== -->
-    <div class="screen" id="screen-g2-play" style="background: linear-gradient(160deg, #E8D8FF, #C8A8F8, #A080E0);">
-      <div style="padding: 70px 24px 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px">
-
-        <!-- 進捗表示 -->
-        <div id="g2-progress" style="font-size:16px; color:white; font-weight:700">もんだい 1 / 6</div>
-
-        <!-- 問いかけテキスト -->
-        <div style="font-size:22px; color:white; font-weight:800; text-shadow: 0 2px 4px rgba(0,0,0,0.2)">
-          どの どうぶつの こえかな？
-        </div>
-
-        <!-- スピーカーボタン（大きく。3歳がタップしやすい） -->
-        <button id="g2-speaker" onclick="g2PlaySound()" style="
-          width:100px; height:100px; border-radius:50%; border:none; cursor:pointer;
-          background: white; font-size:48px;
-          box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 10px 20px rgba(0,0,0,0.15);
-          transition: transform 0.12s var(--ease-spring), box-shadow 0.12s ease;
-          touch-action: manipulation;
-        ">🔊</button>
-
-        <!-- 4択カード -->
-        <div id="g2-choices" style="display:grid; grid-template-columns:1fr 1fr; gap:14px; width:100%; padding:0 10px"></div>
-      </div>
-    </div>
-
-    <!-- ===== Game3: 形パズル プレイ画面 ===== -->
-    <div class="screen" id="screen-g3-play" style="background: linear-gradient(160deg, #FFE0EE, #FFC0D8, #FF90B8);">
-      <div style="padding: 70px 24px 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px">
-        <div id="g3-stage-label" style="font-size:18px; color:white; font-weight:800">ステージ 1 / 2</div>
-        <div style="font-size:20px; color:white; font-weight:800">かたちを　はめよう！</div>
-
-        <!-- 穴ボード -->
-        <div id="g3-holes" style="
-          display: flex; gap: 20px; justify-content: center;
-          background: rgba(255,255,255,0.3); border-radius: 24px; padding: 24px;
-          width: 100%;
-        "></div>
-
-        <!-- 説明テキスト -->
-        <div style="font-size:16px; color:white; font-weight:700; margin-top:10px">すきなかたちをタップ！</div>
-        <!-- ピース置き場 -->
-        <div id="g3-pieces" style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap"></div>
-      </div>
-    </div>
-
-    <!-- ===== Game4: えさあわせ プレイ画面 ===== -->
-    <div class="screen" id="screen-g4-play" style="background: linear-gradient(160deg, #D8F4FF, #B0E8FF, #80D0F0);">
-      <div style="padding: 70px 16px 20px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 16px">
-        <div id="g4-stage-label" style="font-size:18px; color:#2898B8; font-weight:800">ステージ 1 / 2</div>
-        <div style="font-size:20px; color:#1A6080; font-weight:800">えさを　あげよう！</div>
-
-        <!-- 接続線用SVGオーバーレイ（固定配置） -->
-        <svg id="g4-lines" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:10"></svg>
-
-        <!-- 左: 動物 / 右: 食べ物 の2列レイアウト -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; width:100%; align-items:center">
-          <div id="g4-animals" style="display:flex; flex-direction:column; gap:12px; align-items:center"></div>
-          <div id="g4-foods"   style="display:flex; flex-direction:column; gap:12px; align-items:center"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ===== Game5: 色ボール プレイ画面 ===== -->
-    <div class="screen" id="screen-g5-play" style="background: linear-gradient(180deg, #FFF0E0, #FFE0C0);">
-      <div style="padding:70px 0 0; width:100%; height:100%; display:flex; flex-direction:column; position:relative">
-        <!-- スコア・ラウンド表示 -->
-        <div style="display:flex; justify-content:space-between; padding:0 20px 10px">
-          <div id="g5-score" style="font-size:20px; font-weight:900; color:#3D2C1E">⭐ 0</div>
-          <div id="g5-round" style="font-size:18px; font-weight:800; color:#7A6352">ラウンド 1/3</div>
-        </div>
-
-        <!-- ボールが落ちるゲームエリア -->
-        <div id="g5-game-area" style="flex:1; position:relative; overflow:hidden"></div>
-
-        <!-- バケツエリア -->
-        <div id="g5-buckets" style="display:flex; justify-content:center; gap:8px; padding:10px 12px 20px"></div>
-      </div>
-    </div>
-
-    <!-- ===== 共通クリア画面 ===== -->
-    <div class="screen" id="screen-clear">
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:24px; padding:40px">
-        <div style="font-size:80px; animation: clear-pop 0.6s var(--ease-spring)">🎉</div>
-        <h1 style="font-size:44px; font-weight:900; background:linear-gradient(135deg,#FF6B6B,#FFD93D,#6BCB77); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; animation: clear-pop 0.5s var(--ease-spring) 0.1s both">
-          やったー！
-        </h1>
-        <!-- 星表示エリア -->
-        <div id="clear-stars" style="display:flex; gap:12px; font-size:52px"></div>
-        <!-- ボタンエリア -->
-        <div style="display:flex; gap:8px; flex-direction:column; align-items:center">
-          <button class="btn-main" id="clear-btn-again">もういちど</button>
-          <button class="btn-sub" onclick="goHome()">ホームへ</button>
-        </div>
-      </div>
-      <!-- 紙吹雪コンテナ -->
-      <div id="confetti-container" style="position:absolute; inset:0; pointer-events:none; overflow:hidden"></div>
-    </div>
-
-    <!-- ===== 共通トップバー（ホーム・音量ボタン） ===== -->
-    <div id="topbar">
-      <button class="icon-btn" id="btn-home" onclick="goHome()">🏠</button>
-      <button class="icon-btn" id="btn-sound" onclick="toggleSound()">🔊</button>
+    <!-- ゲームカード6枚 -->
+    <div class="game-grid" style="margin-top:10px">
+      <button class="game-card gc1" onclick="showDiff(1)">
+        <span class="game-card-emoji">🃏</span>
+        <span class="game-card-label">きおくカード</span>
+      </button>
+      <button class="game-card gc2" onclick="showG2Select()">
+        <span class="game-card-emoji">🌿</span>
+        <span class="game-card-label">コロのめいろ</span>
+      </button>
+      <button class="game-card gc3" onclick="startG3()">
+        <span class="game-card-emoji">🧩</span>
+        <span class="game-card-label">えあわせパズル</span>
+      </button>
+      <button class="game-card gc4" onclick="startG4()">
+        <span class="game-card-emoji">🫧</span>
+        <span class="game-card-label">バブルはじき</span>
+      </button>
+      <button class="game-card gc5" onclick="startG5()">
+        <span class="game-card-emoji">🍎</span>
+        <span class="game-card-label">たべものあわせ</span>
+      </button>
+      <button class="game-card gc6" onclick="startG6()">
+        <span class="game-card-emoji">🎨</span>
+        <span class="game-card-label">いろをぬろう</span>
+      </button>
     </div>
   </div>
 
-  <script>
-    // =============================================
-    // 画面管理（showScreen方式）
-    // =============================================
-    let currentScreen = 'screen-home';
+  <!-- ========== G1: 難易度選択 ========== -->
+  <div class="screen" id="sc-g1-diff" style="background:linear-gradient(160deg,#FFE0B2,#FFCC80)">
+    <div class="diff-title">⭐ きおくカード ⭐<br><span style="font-size:18px">むずかしさをえらんでね</span></div>
+    <div class="diff-btns">
+      <button class="diff-btn easy" onclick="startG1('easy')">
+        <span>⭐ やさしい</span><span style="font-size:15px">3ペア</span>
+      </button>
+      <button class="diff-btn normal" onclick="startG1('normal')">
+        <span>⭐⭐ ふつう</span><span style="font-size:15px">5ペア</span>
+      </button>
+      <button class="diff-btn hard" onclick="startG1('hard')">
+        <span>⭐⭐⭐ むずかしい</span><span style="font-size:15px">8ペア</span>
+      </button>
+      <button class="btn-back" onclick="goHome()">🏠 もどる</button>
+    </div>
+  </div>
 
-    /**
-     * 指定した画面IDに切り替える
-     * @param {string} id - 表示する画面のID
-     */
-    function showScreen(id) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      document.getElementById(id).classList.add('active');
-      currentScreen = id;
+  <!-- ========== G1: プレイ ========== -->
+  <div class="screen" id="sc-g1-play">
+    <div class="g1-header">
+      <span class="g1-title">🃏 きおくカード</span>
+      <span class="g1-moves" id="g1-moves-el">てかず: 0</span>
+    </div>
+    <div class="mem-grid" id="g1-grid"></div>
+  </div>
 
-      // ホーム画面以外でトップバーを表示
-      const topbar = document.getElementById('topbar');
-      if (id === 'screen-home') {
-        topbar.style.display = 'none';
-      } else {
-        topbar.style.display = 'flex';
-      }
+  <!-- ========== G2: 難易度選択 ========== -->
+  <div class="screen" id="sc-g2-diff" style="background:linear-gradient(160deg,#C8E6C9,#A5D6A7)">
+    <div class="diff-title">🌿 コロのめいろ<br><span style="font-size:18px">むずかしさをえらんでね</span></div>
+    <div class="diff-btns">
+      <button class="diff-btn easy" onclick="startG2(0)">⭐ やさしい</button>
+      <button class="diff-btn normal" onclick="startG2(1)">⭐⭐ ふつう</button>
+      <button class="diff-btn hard" onclick="startG2(2)">⭐⭐⭐ むずかしい</button>
+      <button class="btn-back" onclick="goHome()">🏠 もどる</button>
+    </div>
+  </div>
+
+  <!-- ========== G2: プレイ ========== -->
+  <div class="screen" id="sc-g2-play">
+    <div class="g2-wrap">
+      <canvas id="g2-canvas"></canvas>
+    </div>
+    <div class="g2-stars-count" id="g2-stars-el">⭐ 0</div>
+  </div>
+  <!-- コロのDOM（迷路上を移動） -->
+  <div id="g2-koro-el">🦝</div>
+
+  <!-- ========== G3: パズル ========== -->
+  <div class="screen" id="sc-g3-play">
+    <div class="g3-header">
+      <div class="g3-title" id="g3-title-el">🧩 えあわせパズル</div>
+    </div>
+    <div style="position:relative;width:200px;margin:0 auto;">
+      <div class="g3-board" id="g3-board"></div>
+    </div>
+    <div id="g3-msg" style="font-size:18px;font-weight:700;color:#880E4F;text-align:center;min-height:28px;margin:4px 0;"></div>
+    <div class="g3-pieces" id="g3-pieces"></div>
+    <div style="padding:8px 16px;text-align:center;font-size:16px;color:#6A1B9A;font-weight:700;" id="g3-progress"></div>
+  </div>
+
+  <!-- ========== G4: バブルはじき ========== -->
+  <div class="screen" id="sc-g4-play">
+    <div class="g4-header">
+      <div class="g4-count">のこり: <span id="g4-remain">20</span></div>
+      <div class="g4-round-info">ラウンド <span id="g4-round">1</span> / 3</div>
+    </div>
+    <div class="g4-area" id="g4-area"></div>
+    <div class="g4-wave"></div>
+  </div>
+
+  <!-- ========== G5: たべものあわせ ========== -->
+  <div class="screen" id="sc-g5-play">
+    <div class="g5-wrap">
+      <div style="font-size:18px;font-weight:900;color:#E65100;margin-bottom:8px;">
+        ステージ <span id="g5-stage-el">1</span>/3
+      </div>
+      <div class="g5-animal-area" id="g5-animals"></div>
+      <div style="font-size:16px;font-weight:700;color:#F57C00;margin:6px 0;">🍽️ たべものをえらんでね！</div>
+      <div class="g5-food-area" id="g5-foods"></div>
+    </div>
+  </div>
+
+  <!-- ========== G6: いろをぬろう ========== -->
+  <div class="screen" id="sc-g6-play">
+    <div class="g6-header">
+      <div class="g6-title">🎨 いろをぬろう（<span id="g6-pic-el">1</span>/3）</div>
+    </div>
+    <div class="g6-canvas-wrap">
+      <svg id="g6-svg" viewBox="0 0 260 220" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+    <div class="g6-palette" id="g6-palette"></div>
+    <button class="g6-next-btn" id="g6-next-btn" onclick="g6Next()" style="display:none">つぎのえへ →</button>
+  </div>
+
+  <!-- ========== クリア画面 ========== -->
+  <div class="screen" id="sc-clear">
+    <div class="clear-inner">
+      <div class="clear-emoji">🎉</div>
+      <div class="clear-title">やったー！</div>
+      <div class="clear-stars" id="clear-stars">⭐⭐⭐</div>
+      <div class="clear-btns">
+        <button class="btn-main orange" id="btn-replay">もういちど</button>
+        <button class="btn-main" onclick="goHome()">ホームへ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== トップバー ========== -->
+  <div id="topbar" style="display:none">
+    <button class="btn-icon" onclick="goHome()">🏠</button>
+    <button class="btn-icon" id="btn-sound" onclick="toggleSound()">🔊</button>
+  </div>
+</div>
+
+<script>
+/* =============================================
+   画面管理
+============================================= */
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const el=document.getElementById(id);
+  el.classList.add('active');
+  const bar=document.getElementById('topbar');
+  bar.style.display=id==='sc-home'?'none':'flex';
+}
+
+function goHome(){
+  // G2後始末
+  if(g2.raf){cancelAnimationFrame(g2.raf);g2.raf=null;}
+  const canvas=document.getElementById('g2-canvas');
+  canvas.removeEventListener('touchstart',g2.onTouch);
+  canvas.removeEventListener('touchmove',g2.onTouch);
+  canvas.removeEventListener('mousemove',g2.onMouse);
+  canvas.removeEventListener('mousedown',g2.onMouse);
+  // G4後始末
+  if(window.g4Interval){clearInterval(window.g4Interval);window.g4Interval=null;}
+  document.querySelectorAll('.bubble').forEach(b=>b.remove());
+  // コロDOM非表示
+  const k=document.getElementById('g2-koro-el');if(k)k.style.display='none';
+  showScreen('sc-home');
+}
+
+/* =============================================
+   Web Audio 効果音
+============================================= */
+let _ctx=null,soundOn=true;
+function getCtx(){
+  if(!_ctx)_ctx=new(window.AudioContext||window.webkitAudioContext)();
+  if(_ctx.state==='suspended')_ctx.resume();
+  return _ctx;
+}
+function playNote(ctx,type,freq,vol,dur,start,endFreq=null){
+  try{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.type=type;o.frequency.setValueAtTime(freq,start);
+    if(endFreq)o.frequency.exponentialRampToValueAtTime(endFreq,start+dur);
+    g.gain.setValueAtTime(vol,start);
+    g.gain.exponentialRampToValueAtTime(0.001,start+dur);
+    o.start(start);o.stop(start+dur+.05);
+  }catch(e){}
+}
+function sound(type){
+  if(!soundOn)return;
+  try{
+    const ctx=getCtx(),t=ctx.currentTime;
+    if(type==='flip'){playNote(ctx,'sine',440,.2,.1,t);}
+    else if(type==='match'){
+      playNote(ctx,'sine',523,.3,.1,t);
+      playNote(ctx,'sine',659,.3,.1,t+.1);
+      playNote(ctx,'sine',784,.3,.15,t+.2);
     }
-
-    /** ホームに戻る */
-    function goHome() {
-      // Game5のアニメーションループを停止
-      if (g5State && g5State.raf) {
-        cancelAnimationFrame(g5State.raf);
-        g5State.stopped = true;
-      }
-      showScreen('screen-home');
+    else if(type==='wrong'){playNote(ctx,'sawtooth',300,.15,.2,t,200);}
+    else if(type==='snap'){playNote(ctx,'sine',660,.25,.12,t);}
+    else if(type==='pop'){
+      playNote(ctx,'sine',400,.3,.08,t);
+      playNote(ctx,'sine',200,.2,.08,t+.05);
     }
-
-    /** Game1の難易度選択画面へ */
-    function showG1Diff() {
-      showScreen('screen-g1-diff');
+    else if(type==='star'){
+      playNote(ctx,'sine',880,.2,.08,t);
+      playNote(ctx,'sine',1100,.2,.08,t+.08);
     }
-
-    // =============================================
-    // Web Audio API（全ゲーム共通の音声エンジン）
-    // =============================================
-    let _audioCtx = null;
-    let soundEnabled = true;
-
-    /**
-     * AudioContextを取得（iOS対応：ユーザータップ後に初期化）
-     */
-    function getAudioCtx() {
-      if (!_audioCtx) {
-        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      // iOSでsuspended状態になることがある
-      if (_audioCtx.state === 'suspended') _audioCtx.resume();
-      return _audioCtx;
-    }
-
-    /**
-     * 効果音再生（種類を指定）
-     * @param {string} type - 効果音の種類
-     */
-    function playSound(type) {
-      if (!soundEnabled) return;
-      const ctx = getAudioCtx();
-
-      const sounds = {
-        flip:       () => playNoise(ctx, 0.2, 0.08),
-        tap:        () => playBeep(ctx, 600, 'sine', 0.3, 0.12),
-        select:     () => playBeep(ctx, 800, 'sine', 0.25, 0.1),
-        match:      () => playArpeggio(ctx, [523, 659, 784], 'triangle', 0.35),
-        correct:    () => playArpeggio(ctx, [523, 659, 784, 1047], 'triangle', 0.3),
-        wrong:      () => playWrong(ctx),
-        place:      () => playBeep(ctx, 700, 'triangle', 0.4, 0.2),
-        stageclear: () => playArpeggio(ctx, [523, 659, 784, 659, 784, 1047], 'triangle', 0.3),
-        fanfare:    () => playFanfare(ctx),
-        bounce:     () => playBeep(ctx, 500, 'sine', 0.35, 0.15),
-      };
-
-      if (sounds[type]) sounds[type]();
-    }
-
-    /**
-     * 単音ビープ音を鳴らす
-     */
-    function playBeep(ctx, freq, type, vol, dur) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = type;
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(vol, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-      osc.start();
-      osc.stop(ctx.currentTime + dur);
-    }
-
-    /**
-     * 不正解音（下降するぽよん音）
-     */
-    function playWrong(ctx) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(400, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.4, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.3);
-    }
-
-    /**
-     * アルペジオ（和音を順番に鳴らす）
-     */
-    function playArpeggio(ctx, notes, type, vol) {
-      notes.forEach((freq, i) => {
-        setTimeout(() => playBeep(ctx, freq, type, vol, 0.3), i * 120);
+    else if(type==='wall'){playNote(ctx,'square',180,.15,.1,t);}
+    else if(type==='paint'){playNote(ctx,'sine',500,.2,.1,t);}
+    else if(type==='fanfare'){
+      [523,659,784,1047].forEach((f,i)=>{
+        playNote(ctx,'sine',f,.3,.2,t+i*.15);
       });
+      playNote(ctx,'sine',1047,.35,.4,t+.6);
     }
+  }catch(e){}
+}
+function toggleSound(){
+  soundOn=!soundOn;
+  document.getElementById('btn-sound').textContent=soundOn?'🔊':'🔇';
+}
 
-    /**
-     * ノイズ音（カードめくり効果音）
-     */
-    function playNoise(ctx, vol, dur) {
-      const buf = ctx.createBuffer(1, ctx.sampleRate * dur, ctx.sampleRate);
-      const data = buf.getChannelData(0);
-      for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * 0.3;
-      const src = ctx.createBufferSource();
-      const gain = ctx.createGain();
-      src.buffer = buf;
-      src.connect(gain);
-      gain.connect(ctx.destination);
-      gain.gain.setValueAtTime(vol, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-      src.start();
-      src.stop(ctx.currentTime + dur);
-    }
+/* =============================================
+   クリア画面
+============================================= */
+let _clearReplay=null;
+function showClear(gameId,stars){
+  const starsEl=document.getElementById('clear-stars');
+  starsEl.textContent='⭐'.repeat(stars)+'☆'.repeat(3-stars);
+  const btn=document.getElementById('btn-replay');
+  btn.onclick=_clearReplay=(()=>{
+    if(gameId===1)showDiff(1);
+    else if(gameId===2)showG2Select();
+    else if(gameId===3)startG3();
+    else if(gameId===4)startG4();
+    else if(gameId===5)startG5();
+    else if(gameId===6)startG6();
+  });
+  showScreen('sc-clear');
+  launchConfetti();
+  sound('fanfare');
+}
+function launchConfetti(){
+  const colors=['#FF5252','#FF9800','#FFEB3B','#4CAF50','#2196F3','#E040FB','#FF4081','#76FF03'];
+  for(let i=0;i<60;i++){
+    const c=document.createElement('div');
+    c.className='confetti-piece';
+    c.style.cssText=`
+      left:${Math.random()*100}%;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      width:${8+Math.random()*10}px;height:${8+Math.random()*10}px;
+      --dur:${1.5+Math.random()*1.5}s;
+      --rot:${Math.random()*720-360}deg;
+      animation-delay:${Math.random()*.8}s;
+      border-radius:${Math.random()>.5?'50%':'2px'};
+    `;
+    document.getElementById('sc-clear').appendChild(c);
+    setTimeout(()=>c.remove(),3500);
+  }
+}
 
-    /**
-     * ファンファーレ（クリア時）
-     */
-    function playFanfare(ctx) {
-      const melody = [523, 659, 784, 1047, 784, 1047, 1319];
-      melody.forEach((freq, i) => {
-        setTimeout(() => playBeep(ctx, freq, 'triangle', 0.35, 0.25), i * 150);
-      });
-    }
+/* =============================================
+   GAME 1: きおくカード（神経衰弱）
+============================================= */
+const G1_ANIMALS=[
+  {id:'cat',e:'🐱',n:'ねこ'},{id:'dog',e:'🐶',n:'いぬ'},
+  {id:'bear',e:'🐻',n:'くま'},{id:'rabbit',e:'🐰',n:'うさぎ'},
+  {id:'panda',e:'🐼',n:'パンダ'},{id:'fox',e:'🦊',n:'きつね'},
+  {id:'pig',e:'🐷',n:'ぶた'},{id:'koala',e:'🐨',n:'コアラ'},
+];
+const G1_LEVELS={
+  easy:{pairs:3,cols:2,rows:3,cardPx:100},
+  normal:{pairs:5,cols:3,rows:4,cardPx:82},
+  hard:{pairs:8,cols:4,rows:4,cardPx:76},
+};
+let g1={flipped:[],matched:0,locked:false,total:0,moves:0,level:'easy'};
 
-    /**
-     * 動物の鳴き声をWeb Audio APIで合成
-     * @param {string} type - 動物の種類
-     */
-    function playAnimalSound(type) {
-      if (!soundEnabled) return;
-      const ctx = getAudioCtx();
+function showDiff(gameId){
+  if(gameId===1)showScreen('sc-g1-diff');
+}
 
-      switch (type) {
-        case 'cat':
-          // 高音の「にゃー」（周波数が上がって下がる）
-          synthAnimal(ctx, [800, 1000, 700], 'sine', 0.5, 0.6);
-          break;
-        case 'dog':
-          // 「ワン」を2回繰り返す
-          synthBark(ctx, 0);
-          setTimeout(() => synthBark(ctx, 0.35), 350);
-          break;
-        case 'bear':
-          // 重低音の「うー」
-          synthAnimal(ctx, [150, 180, 120], 'sawtooth', 0.4, 0.9);
-          break;
-        case 'rabbit':
-          // 短い高音の「チッ」
-          synthAnimal(ctx, [1200, 900], 'sine', 0.3, 0.25);
-          break;
-        case 'elephant':
-          // 「パオーン」（低音から上昇）
-          synthAnimal(ctx, [100, 400, 200], 'sawtooth', 0.5, 1.0);
-          break;
-        case 'pig':
-          // 「ブーブー」
-          synthAnimal(ctx, [300, 260, 290], 'square', 0.35, 0.5);
-          break;
+function startG1(level){
+  g1.level=level;
+  const cfg=G1_LEVELS[level];
+  g1.total=cfg.pairs;g1.matched=0;g1.moves=0;g1.flipped=[];g1.locked=true;
+  // Fisher-Yatesシャッフル
+  let pool=G1_ANIMALS.slice(0,cfg.pairs).flatMap(a=>[a,a]);
+  for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  // グリッド構築
+  const grid=document.getElementById('g1-grid');
+  grid.innerHTML='';
+  grid.style.gridTemplateColumns=`repeat(${cfg.cols},1fr)`;
+  document.getElementById('g1-moves-el').textContent='てかず: 0';
+  pool.forEach((animal,idx)=>{
+    const card=document.createElement('div');
+    card.className='mem-card';
+    card.style.height=cfg.cardPx+'px';
+    card.dataset.id=animal.id;card.dataset.idx=idx;
+    card.innerHTML=`<div class="mem-inner"><div class="mem-back">⭐</div><div class="mem-front">${animal.e}</div></div>`;
+    // プレビュー時に表向き
+    card.querySelector('.mem-inner').style.transform='rotateY(180deg)';
+    card.onclick=()=>flipCard(card,animal);
+    grid.appendChild(card);
+  });
+  showScreen('sc-g1-play');
+  // 1秒プレビュー後に裏返す
+  setTimeout(()=>{
+    grid.querySelectorAll('.mem-card .mem-inner').forEach(i=>i.style.transform='');
+    setTimeout(()=>{g1.locked=false;},500);
+  },1000);
+}
+
+function flipCard(el,animal){
+  if(g1.locked||el.classList.contains('flipped')||el.classList.contains('matched'))return;
+  el.classList.add('flipped');sound('flip');
+  g1.flipped.push({el,animal});
+  if(g1.flipped.length<2)return;
+  g1.locked=true;g1.moves++;
+  document.getElementById('g1-moves-el').textContent=`てかず: ${g1.moves}`;
+  const [a,b]=g1.flipped;
+  if(a.animal.id===b.animal.id){
+    // 一致
+    setTimeout(()=>{
+      a.el.classList.add('matched');b.el.classList.add('matched');
+      sound('match');g1.matched++;g1.flipped=[];g1.locked=false;
+      if(g1.matched===g1.total){
+        const stars=g1.moves<=g1.total*1.5?3:g1.moves<=g1.total*2.5?2:1;
+        setTimeout(()=>showClear(1,stars),500);
       }
-    }
+    },200);
+  }else{
+    // 不一致
+    a.el.classList.add('shake');b.el.classList.add('shake');
+    sound('wrong');
+    setTimeout(()=>{
+      a.el.classList.remove('flipped','shake');
+      b.el.classList.remove('flipped','shake');
+      g1.flipped=[];g1.locked=false;
+    },700);
+  }
+}
 
-    /**
-     * 動物音の合成ヘルパー
-     */
-    function synthAnimal(ctx, freqs, type, vol, duration) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = type;
-      const t = ctx.currentTime;
-      osc.frequency.setValueAtTime(freqs[0], t);
-      freqs.forEach((f, i) => {
-        osc.frequency.linearRampToValueAtTime(f, t + duration * (i + 1) / freqs.length);
+/* =============================================
+   GAME 2: コロのめいろ（Canvas）
+============================================= */
+// 0=通路, 1=壁
+const MAZES=[
+  {cols:5,rows:5,
+   grid:[[1,1,1,1,1],[0,0,0,1,1],[1,1,0,1,1],[1,1,0,0,0],[1,1,1,1,1]],
+   start:{r:1,c:0},goal:{r:3,c:4},
+   stars:[{r:1,c:1},{r:2,c:2},{r:3,c:2}]},
+  {cols:7,rows:7,
+   grid:[[1,1,1,1,1,1,1],[0,0,0,0,1,1,1],[1,1,1,0,1,1,1],[1,0,0,0,0,0,1],[1,0,1,1,1,0,1],[1,0,0,0,0,0,0],[1,1,1,1,1,1,1]],
+   start:{r:1,c:0},goal:{r:5,c:6},
+   stars:[{r:1,c:2},{r:3,c:2},{r:4,c:1},{r:5,c:4}]},
+  {cols:9,rows:9,
+   grid:[[1,1,1,1,1,1,1,1,1],[0,0,0,1,0,0,0,0,1],[1,1,0,1,0,1,1,0,1],[1,1,0,0,0,1,1,0,1],[1,1,1,1,1,1,1,0,1],[1,0,0,0,0,0,0,0,1],[1,0,1,1,1,1,1,1,1],[1,0,0,0,0,0,0,0,0],[1,1,1,1,1,1,1,1,1]],
+   start:{r:1,c:0},goal:{r:7,c:8},
+   stars:[{r:1,c:2},{r:3,c:4},{r:5,c:3},{r:5,c:6},{r:7,c:4}]}
+];
+
+let g2={maze:null,cW:0,koro:{x:0,y:0,tx:0,ty:0},stars:[],raf:null,wallFlash:null,done:false,onTouch:null,onMouse:null};
+
+function showG2Select(){showScreen('sc-g2-diff');}
+
+function startG2(levelIdx){
+  if(g2.raf){cancelAnimationFrame(g2.raf);g2.raf=null;}
+  const maze=MAZES[levelIdx];
+  const canvas=document.getElementById('g2-canvas');
+  const appEl=document.getElementById('app');
+  const avW=appEl.clientWidth-24;
+  const avH=appEl.clientHeight*0.78;
+  const cW=Math.floor(Math.min(avW/maze.cols,avH/maze.rows));
+  canvas.width=cW*maze.cols;canvas.height=cW*maze.rows;
+  canvas.style.width=canvas.width+'px';canvas.style.height=canvas.height+'px';
+  g2.maze=maze;g2.cW=cW;g2.done=false;g2.wallFlash=null;
+  g2.stars=maze.stars.map(s=>({...s,collected:false}));
+  const sx=maze.start.c*cW+cW/2,sy=maze.start.r*cW+cW/2;
+  g2.koro={x:sx,y:sy,tx:sx,ty:sy};
+  updateG2StarsUI();
+  showScreen('sc-g2-play');
+  const k=document.getElementById('g2-koro-el');k.style.display='block';
+
+  // タッチ操作
+  function handlePos(px,py){
+    const col=Math.floor(px/cW),row=Math.floor(py/cW);
+    if(row<0||row>=maze.rows||col<0||col>=maze.cols)return;
+    if(maze.grid[row][col]===0){
+      g2.koro.tx=col*cW+cW/2;g2.koro.ty=row*cW+cW/2;
+      g2.stars.forEach(star=>{
+        if(!star.collected&&star.r===row&&star.c===col){
+          star.collected=true;sound('star');updateG2StarsUI();
+        }
       });
-      gain.gain.setValueAtTime(vol, t);
-      gain.gain.linearRampToValueAtTime(vol, t + duration * 0.7);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
-      osc.start(t);
-      osc.stop(t + duration);
-    }
-
-    /**
-     * 犬の吠え声（ワン）
-     */
-    function synthBark(ctx, delay = 0) {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.type = 'sawtooth';
-      const t = ctx.currentTime + delay;
-      osc.frequency.setValueAtTime(350, t);
-      osc.frequency.exponentialRampToValueAtTime(200, t + 0.2);
-      gain.gain.setValueAtTime(0.5, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-      osc.start(t);
-      osc.stop(t + 0.3);
-    }
-
-    /** 音量トグル */
-    function toggleSound() {
-      soundEnabled = !soundEnabled;
-      document.getElementById('btn-sound').textContent = soundEnabled ? '🔊' : '🔇';
-    }
-
-    // =============================================
-    // 紙吹雪エフェクト
-    // =============================================
-    /**
-     * クリア時に紙吹雪を降らせる
-     */
-    function launchConfetti() {
-      const container = document.getElementById('confetti-container');
-      container.innerHTML = '';
-      const colors = ['#FF6B6B', '#FFD93D', '#6BCB77', '#4D96FF', '#C77DFF', '#FF9E44'];
-
-      for (let i = 0; i < 60; i++) {
-        const el = document.createElement('div');
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const size = 8 + Math.random() * 10;
-        const startX = Math.random() * 100;
-        const delay = Math.random() * 1.0;
-        const duration = 1.8 + Math.random() * 1.5;
-        const isCircle = Math.random() > 0.5;
-
-        el.style.cssText = `
-          position: absolute; top: -20px; left: ${startX}%;
-          width: ${size}px; height: ${size}px;
-          background: ${color};
-          border-radius: ${isCircle ? '50%' : '3px'};
-          animation: confetti-fall ${duration}s ${delay}s ease-in forwards;
-          transform: rotate(${Math.random() * 360}deg);
-        `;
-        container.appendChild(el);
+      if(!g2.done&&row===maze.goal.r&&col===maze.goal.c){
+        g2.done=true;
+        setTimeout(()=>{cancelAnimationFrame(g2.raf);g2.raf=null;showClear(2,3);},600);
       }
+    }else{
+      g2.wallFlash={r:row,c:col,timer:12};sound('wall');
+      const k=document.getElementById('g2-koro-el');
+      k.classList.remove('shake');void k.offsetWidth;k.classList.add('shake');
+      setTimeout(()=>k.classList.remove('shake'),400);
     }
+  }
 
-    // =============================================
-    // 共通クリア画面
-    // =============================================
-    /**
-     * クリア画面を表示する
-     * @param {number} gameId - ゲームID（1〜5）
-     * @param {number} stars - 獲得した星の数（1〜3）
-     */
-    function showClear(gameId, stars) {
-      // 星の表示（獲得した星はフル表示、残りは半透明）
-      const starsEl = document.getElementById('clear-stars');
-      starsEl.innerHTML = Array.from({ length: 3 }, (_, i) =>
-        `<span class="clear-star" style="opacity:${i < stars ? 1 : 0.3}; animation-delay:${0.1 + i * 0.15}s">⭐</span>`
-      ).join('');
+  // 古いハンドラを先に除去（再プレイ時に2重登録にならないよう順序を修正）
+  canvas.removeEventListener('touchstart',g2.onTouch);
+  canvas.removeEventListener('touchmove',g2.onTouch);
+  canvas.removeEventListener('mousedown',g2.onMouse);
+  canvas.removeEventListener('mousemove',g2.onMouse);
+  g2.onTouch=e=>{
+    e.preventDefault();
+    const rect=canvas.getBoundingClientRect();
+    const touch=e.touches[0];
+    const scaleX=canvas.width/rect.width,scaleY=canvas.height/rect.height;
+    const px=(touch.clientX-rect.left)*scaleX,py=(touch.clientY-rect.top)*scaleY;
+    handlePos(px,py);
+  };
+  g2.onMouse=e=>{
+    if(e.buttons===0&&e.type==='mousemove')return;
+    const rect=canvas.getBoundingClientRect();
+    const scaleX=canvas.width/rect.width,scaleY=canvas.height/rect.height;
+    const px=(e.clientX-rect.left)*scaleX,py=(e.clientY-rect.top)*scaleY;
+    handlePos(px,py);
+  };
+  canvas.addEventListener('touchstart',g2.onTouch,{passive:false});
+  canvas.addEventListener('touchmove',g2.onTouch,{passive:false});
+  canvas.addEventListener('mousedown',g2.onMouse);
+  canvas.addEventListener('mousemove',g2.onMouse);
 
-      // 「もういちど」ボタンのコールバック設定
-      document.getElementById('clear-btn-again').onclick = () => {
-        if (gameId === 1) showG1Diff();
-        else if (gameId === 2) startG2();
-        else if (gameId === 3) startG3();
-        else if (gameId === 4) startG4();
-        else startG5();
-      };
+  // アニメーションループ
+  function loop(){
+    g2.koro.x+=(g2.koro.tx-g2.koro.x)*0.22;
+    g2.koro.y+=(g2.koro.ty-g2.koro.y)*0.22;
+    if(g2.wallFlash){g2.wallFlash.timer--;if(g2.wallFlash.timer<=0)g2.wallFlash=null;}
+    drawMaze(canvas.getContext('2d'),maze,cW);
+    // コロDOMを正しい位置へ
+    const rect=canvas.getBoundingClientRect();
+    const k=document.getElementById('g2-koro-el');
+    const sz=Math.max(cW*0.72,28);
+    const scaleX=rect.width/canvas.width,scaleY=rect.height/canvas.height;
+    k.style.fontSize=sz+'px';
+    k.style.left=(rect.left+g2.koro.x*scaleX-sz/2)+'px';
+    k.style.top=(rect.top+g2.koro.y*scaleY-sz/2)+'px';
+    g2.raf=requestAnimationFrame(loop);
+  }
+  g2.raf=requestAnimationFrame(loop);
+}
 
-      showScreen('screen-clear');
-      launchConfetti();
-      playSound('fanfare');
-    }
+function updateG2StarsUI(){
+  const collected=g2.stars.filter(s=>s.collected).length;
+  document.getElementById('g2-stars-el').textContent='⭐'.repeat(collected)+'☆'.repeat(g2.stars.length-collected);
+}
 
-    // =============================================
-    // Game 1: どうぶつきおくカード（神経衰弱）
-    // =============================================
-
-    // 動物データ定義
-    const G1_ANIMALS = [
-      { id: 'cat',      emoji: '🐱', name: 'ねこ' },
-      { id: 'dog',      emoji: '🐶', name: 'いぬ' },
-      { id: 'bear',     emoji: '🐻', name: 'くま' },
-      { id: 'rabbit',   emoji: '🐰', name: 'うさぎ' },
-      { id: 'elephant', emoji: '🐘', name: 'ぞう' },
-      { id: 'giraffe',  emoji: '🦒', name: 'きりん' },
-    ];
-
-    // 難易度設定（3歳の認知発達に合わせた調整）
-    const G1_LEVELS = {
-      easy:   { pairs: 3, cols: 2, rows: 3, size: '108px' },
-      normal: { pairs: 4, cols: 2, rows: 4, size: '100px' },
-      hard:   { pairs: 6, cols: 3, rows: 4, size:  '86px' },
-    };
-
-    // Game1の状態管理
-    let g1State = { flipped: [], matched: 0, locked: false, total: 0, moves: 0 };
-
-    /**
-     * Game1開始（難易度を指定して神経衰弱を始める）
-     * @param {string} level - 'easy' | 'normal' | 'hard'
-     */
-    function startG1(level) {
-      const cfg = G1_LEVELS[level];
-      const animals = G1_ANIMALS.slice(0, cfg.pairs);
-      // ペアを作ってシャッフル（Fisher-Yates）
-      let cards = [...animals, ...animals].map((a, i) => ({ ...a, uid: i }));
-      for (let i = cards.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [cards[i], cards[j]] = [cards[j], cards[i]];
-      }
-
-      g1State = { flipped: [], matched: 0, locked: false, total: cfg.pairs, moves: 0 };
-
-      // ボードを生成
-      const board = document.getElementById('g1-board');
-      board.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
-      board.innerHTML = '';
-
-      cards.forEach(card => {
-        const el = document.createElement('div');
-        el.className = 'mem-card';
-        el.style.height = cfg.size;
-        el.dataset.id = card.id;
-        el.dataset.uid = card.uid;
-        el.innerHTML = `
-          <div class="mem-card-inner">
-            <div class="mem-card-back">⭐</div>
-            <div class="mem-card-front">${card.emoji}</div>
-          </div>`;
-        el.addEventListener('click', () => flipCard(el, card));
-        board.appendChild(el);
-      });
-
-      showScreen('screen-g1-play');
-      playSound('flip');
-    }
-
-    /**
-     * カードをめくる処理
-     * @param {HTMLElement} el - カード要素
-     * @param {Object} card - カードデータ
-     */
-    function flipCard(el, card) {
-      // ロック中・すでにめくられている・マッチ済みは無視
-      if (g1State.locked || el.classList.contains('flipped') || el.classList.contains('matched')) return;
-
-      el.classList.add('flipped');
-      g1State.flipped.push({ el, card });
-      playSound('flip');
-
-      // 2枚めくったら判定
-      if (g1State.flipped.length === 2) {
-        g1State.locked = true;
-        g1State.moves++;
-        const [a, b] = g1State.flipped;
-
-        if (a.card.id === b.card.id) {
-          // マッチ！：緑でハイライト
-          setTimeout(() => {
-            a.el.classList.add('matched');
-            b.el.classList.add('matched');
-            g1State.flipped = [];
-            g1State.locked = false;
-            g1State.matched++;
-            playSound('match');
-            // 全ペア揃ったらクリア
-            if (g1State.matched === g1State.total) {
-              setTimeout(() => showClear(1, calcG1Stars(g1State.moves, g1State.total)), 600);
-            }
-          }, 400);
-        } else {
-          // ミスマッチ：オレンジシェイク → 裏返す
-          setTimeout(() => {
-            a.el.classList.add('wrong');
-            b.el.classList.add('wrong');
-            playSound('wrong');
-            setTimeout(() => {
-              a.el.classList.remove('flipped', 'wrong');
-              b.el.classList.remove('flipped', 'wrong');
-              g1State.flipped = [];
-              g1State.locked = false;
-            }, 800);
-          }, 400);
+function drawMaze(ctx,maze,cW){
+  const {rows,cols,grid,start,goal}=maze;
+  ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height);
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const x=c*cW,y=r*cW;
+      if(grid[r][c]===1){
+        // 壁: 森の緑
+        const isFlash=g2.wallFlash&&g2.wallFlash.r===r&&g2.wallFlash.c===c;
+        ctx.fillStyle=isFlash?'#FF80AB':'#33691E';
+        ctx.fillRect(x,y,cW,cW);
+        // 草テクスチャ上部
+        ctx.fillStyle=isFlash?'#FF4081':'#558B2F';
+        ctx.fillRect(x,y,cW,cW*0.3);
+        // 木の幹風ライン
+        ctx.fillStyle='rgba(0,0,0,0.08)';
+        for(let i=0;i<3;i++){ctx.fillRect(x+cW*0.3*i+2,y,2,cW);}
+      }else{
+        // 通路: 暖かい土色
+        ctx.fillStyle='#F5E6C3';
+        ctx.fillRect(x,y,cW,cW);
+        ctx.fillStyle='rgba(180,150,100,0.1)';
+        for(let i=0;i<3;i++)for(let j=0;j<3;j++){
+          ctx.beginPath();ctx.arc(x+cW*(0.25+i*0.25),y+cW*(0.25+j*0.25),1.5,0,Math.PI*2);
+          ctx.fill();
         }
       }
     }
+  }
+  // スター描画
+  g2.stars.forEach(star=>{
+    if(star.collected)return;
+    const x=star.c*cW+cW/2,y=star.r*cW+cW/2;
+    ctx.font=`${cW*0.55}px serif`;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText('⭐',x,y);
+  });
+  // スタート
+  ctx.font=`${cW*0.5}px serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText('▶',start.c*cW+cW/2,start.r*cW+cW/2);
+  // ゴール: 輝く光の円 + 旗
+  const gx=goal.c*cW+cW/2,gy=goal.r*cW+cW/2;
+  const grd=ctx.createRadialGradient(gx,gy,2,gx,gy,cW*0.55);
+  grd.addColorStop(0,'rgba(255,235,59,0.7)');
+  grd.addColorStop(1,'rgba(255,235,59,0)');
+  ctx.beginPath();ctx.arc(gx,gy,cW*0.55,0,Math.PI*2);
+  ctx.fillStyle=grd;ctx.fill();
+  ctx.font=`${cW*0.6}px serif`;
+  ctx.fillText('🏁',gx,gy);
+}
 
-    /**
-     * 星の数を計算（手数が少ないほど高評価）
-     */
-    function calcG1Stars(moves, pairs) {
-      const ratio = moves / pairs;
-      if (ratio <= 1.5) return 3;
-      if (ratio <= 2.5) return 2;
-      return 1;
-    }
+/* =============================================
+   GAME 3: えあわせパズル（ドラッグ&ドロップ）
+============================================= */
+const G3_PUZZLES=[
+  {name:'ねこ',emoji:'🐱',color:'#FF8A65'},
+  {name:'いぬ',emoji:'🐶',color:'#42A5F5'},
+  {name:'くま',emoji:'🐻',color:'#8D6E63'},
+];
+let g3={cur:0,placed:0,dragging:null,dragOffX:0,dragOffY:0};
 
-    // =============================================
-    // Game 2: だれのこえかな？（音当てゲーム）
-    // =============================================
+function startG3(){
+  g3.cur=0;g3.placed=0;
+  showScreen('sc-g3-play');
+  g3RenderPuzzle();
+}
 
-    // 動物と鳴き声の対応データ
-    const G2_ANIMALS = [
-      { id: 'cat',      emoji: '🐱', name: 'ねこ',   sound: 'cat'      },
-      { id: 'dog',      emoji: '🐶', name: 'いぬ',   sound: 'dog'      },
-      { id: 'bear',     emoji: '🐻', name: 'くま',   sound: 'bear'     },
-      { id: 'rabbit',   emoji: '🐰', name: 'うさぎ', sound: 'rabbit'   },
-      { id: 'elephant', emoji: '🐘', name: 'ぞう',   sound: 'elephant' },
-      { id: 'pig',      emoji: '🐷', name: 'ぶた',   sound: 'pig'      },
-    ];
+function g3RenderPuzzle(){
+  const pz=G3_PUZZLES[g3.cur];
+  document.getElementById('g3-title-el').textContent=`🧩 えあわせパズル (${g3.cur+1}/3)`;
+  document.getElementById('g3-progress').textContent=`${pz.name} のパズル`;
+  document.getElementById('g3-msg').textContent='';
+  // ボード（2×2スロット）
+  const board=document.getElementById('g3-board');
+  board.innerHTML='';
+  for(let i=0;i<4;i++){
+    const slot=document.createElement('div');
+    slot.className='g3-slot';
+    slot.dataset.idx=i;
+    // スロット内に表示用の絵文字を薄く
+    slot.style.cssText=`aspect-ratio:1;display:flex;align-items:center;justify-content:center;font-size:${i%2===0?'28px':'28px'};opacity:0.3;`;
+    slot.textContent=pz.emoji;
+    board.appendChild(slot);
+  }
+  // ピース生成（4分割・シャッフル）
+  const piecesEl=document.getElementById('g3-pieces');
+  piecesEl.innerHTML='';
+  g3.placed=0;
+  const positions=[0,1,2,3];
+  // Fisher-Yatesシャッフル
+  for(let i=positions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[positions[i],positions[j]]=[positions[j],positions[i]];}
+  positions.forEach((slotIdx)=>{
+    const piece=document.createElement('div');
+    piece.className='g3-piece';
+    piece.dataset.slotIdx=slotIdx;
+    // 背景色+絵文字で疑似分割表示
+    const row=Math.floor(slotIdx/2),col=slotIdx%2;
+    piece.style.cssText=`
+      width:88px;height:88px;border-radius:12px;
+      background:${pz.color};
+      border:3px solid rgba(255,255,255,0.8);
+      box-shadow:0 4px 12px rgba(0,0,0,0.2);
+      display:flex;align-items:center;justify-content:center;
+      font-size:${36+Math.random()*4}px;
+      touch-action:none;cursor:grab;
+      user-select:none;-webkit-user-select:none;
+    `;
+    // 位置ごとに異なる絵文字を表示（4分割を表現）
+    piece.innerHTML=`<span style="font-size:28px">${pz.emoji}</span>`;
+    piece.style.opacity=1;
+    g3BindDrag(piece);
+    piecesEl.appendChild(piece);
+  });
+  // プレビュー：0.8秒後にピースエリアを表示
+  piecesEl.style.opacity='0';
+  setTimeout(()=>{piecesEl.style.transition='opacity .5s';piecesEl.style.opacity='1';},800);
+}
 
-    // Game2の状態管理
-    let g2State = { q: 0, correct: 0, questions: [], answered: false };
-
-    /**
-     * Game2開始（問題リストをシャッフルして始める）
-     */
-    function startG2() {
-      const shuffled = [...G2_ANIMALS].sort(() => Math.random() - 0.5);
-      g2State = { q: 0, correct: 0, questions: shuffled.slice(0, 6), answered: false };
-      showScreen('screen-g2-play');
-      renderG2Question();
-    }
-
-    /**
-     * 現在の問題を描画する
-     */
-    function renderG2Question() {
-      const { q, questions } = g2State;
-      const correct = questions[q];
-
-      document.getElementById('g2-progress').textContent = `もんだい ${q + 1} / 6`;
-
-      // 4択（正解1 + ランダム3）を生成
-      let choices = [correct];
-      const others = G2_ANIMALS
-        .filter(a => a.id !== correct.id)
-        .sort(() => Math.random() - 0.5)
-        .slice(0, 3);
-      choices = [...choices, ...others].sort(() => Math.random() - 0.5);
-
-      const grid = document.getElementById('g2-choices');
-      grid.innerHTML = '';
-      choices.forEach(animal => {
-        const btn = document.createElement('button');
-        btn.style.cssText = `
-          padding: 16px 8px; border-radius: 20px; border: 3px solid transparent;
-          background: white; cursor: pointer; font-family: var(--font);
-          display: flex; flex-direction: column; align-items: center; gap: 6px;
-          box-shadow: 0 4px 0 rgba(0,0,0,0.12); touch-action: manipulation;
-          transition: transform 0.12s var(--ease-spring);
-        `;
-        btn.innerHTML = `<span style="font-size:52px">${animal.emoji}</span><span style="font-size:15px; font-weight:800; color:#3D2C1E">${animal.name}</span>`;
-        btn.onclick = () => g2Answer(animal.id === correct.id, btn);
-        grid.appendChild(btn);
-      });
-
-      g2State.answered = false;
-      // 自動で音を再生（少し遅らせてUIを見てから）
-      setTimeout(() => g2PlaySound(), 400);
-    }
-
-    /**
-     * スピーカーボタンを押したときの動作
-     */
-    function g2PlaySound() {
-      if (!g2State.questions || g2State.questions.length === 0) return;
-      const correct = g2State.questions[g2State.q];
-      playAnimalSound(correct.sound);
-      // ボタンのアニメーション
-      const btn = document.getElementById('g2-speaker');
-      btn.style.transform = 'scale(0.9)';
-      setTimeout(() => btn.style.transform = '', 200);
-    }
-
-    /**
-     * 回答ボタンを押したときの処理
-     * @param {boolean} isCorrect - 正解かどうか
-     * @param {HTMLElement} btn - 押されたボタン要素
-     */
-    function g2Answer(isCorrect, btn) {
-      if (g2State.answered) return;
-      g2State.answered = true;
-
-      if (isCorrect) {
-        // 正解：緑でハイライト
-        btn.style.background = '#E0FFE8';
-        btn.style.borderColor = '#4CC882';
-        btn.style.transform = 'scale(1.1)';
-        playSound('correct');
-        g2State.correct++;
-      } else {
-        // 不正解：オレンジでハイライト（赤は使わない）
-        btn.style.background = '#FFF0E0';
-        btn.style.borderColor = '#FF9E44';
-        playSound('wrong');
-      }
-
-      // 次の問題へ
-      setTimeout(() => {
-        g2State.q++;
-        if (g2State.q >= g2State.questions.length) {
-          // 全問終了→クリア画面
-          const stars = g2State.correct >= 5 ? 3 : g2State.correct >= 3 ? 2 : 1;
-          showClear(2, stars);
-        } else {
-          renderG2Question();
-        }
-      }, 1000);
-    }
-
-    // =============================================
-    // Game 3: かたちパズル（形合わせ）
-    // =============================================
-
-    // 形データ定義
-    const G3_SHAPES = [
-      { id: 'star',     emoji: '⭐', name: 'ほし' },
-      { id: 'heart',    emoji: '❤️', name: 'はーと' },
-      { id: 'circle',   emoji: '🔵', name: 'まる' },
-      { id: 'square',   emoji: '🟨', name: 'しかく' },
-      { id: 'triangle', emoji: '🔺', name: 'さんかく' },
-      { id: 'diamond',  emoji: '🔷', name: 'ひし' },
-    ];
-
-    // ステージ設定（2ステージ、各3形）
-    const G3_STAGES = [
-      ['star', 'heart', 'circle'],
-      ['square', 'triangle', 'diamond'],
-    ];
-
-    // Game3の状態管理
-    let g3State = { stage: 0, selected: null, placed: new Set() };
-
-    /**
-     * Game3開始
-     */
-    function startG3() {
-      g3State = { stage: 0, selected: null, placed: new Set() };
-      showScreen('screen-g3-play');
-      renderG3Stage();
-    }
-
-    /**
-     * 現在のステージを描画する
-     */
-    function renderG3Stage() {
-      const { stage } = g3State;
-      const shapes = G3_STAGES[stage].map(id => G3_SHAPES.find(s => s.id === id));
-
-      document.getElementById('g3-stage-label').textContent = `ステージ ${stage + 1} / 2`;
-
-      // 穴（はめ込む場所）を描画
-      const holesEl = document.getElementById('g3-holes');
-      holesEl.innerHTML = '';
-      shapes.forEach(shape => {
-        const hole = document.createElement('div');
-        hole.id = 'g3-hole-' + shape.id;
-        hole.dataset.id = shape.id;
-        hole.style.cssText = `
-          width: 88px; height: 88px; border-radius: 16px;
-          border: 4px dashed rgba(255,255,255,0.7);
-          background: rgba(255,255,255,0.2);
-          display: flex; align-items: center; justify-content: center;
-          font-size: 50px; cursor: pointer;
-          transition: all 0.2s ease;
-        `;
-        hole.onclick = () => g3TapHole(shape.id);
-        holesEl.appendChild(hole);
-      });
-
-      // ピース（選択するパーツ）をシャッフルして描画
-      const shuffled = [...shapes].sort(() => Math.random() - 0.5);
-      const piecesEl = document.getElementById('g3-pieces');
-      piecesEl.innerHTML = '';
-      shuffled.forEach(shape => {
-        const piece = document.createElement('button');
-        piece.id = 'g3-piece-' + shape.id;
-        piece.dataset.id = shape.id;
-        piece.style.cssText = `
-          width: 88px; height: 88px; border-radius: 20px; border: none; cursor: pointer;
-          background: white; font-size: 50px;
-          box-shadow: 0 5px 0 rgba(0,0,0,0.15), 0 8px 16px rgba(0,0,0,0.1);
-          display: flex; align-items: center; justify-content: center;
-          transition: transform 0.15s var(--ease-spring), box-shadow 0.15s ease;
-          touch-action: manipulation;
-        `;
-        piece.textContent = shape.emoji;
-        piece.onclick = () => g3TapPiece(shape.id, piece);
-        piecesEl.appendChild(piece);
-      });
-    }
-
-    /**
-     * ピースをタップ（選択）
-     * @param {string} id - 形のID
-     * @param {HTMLElement} el - ボタン要素
-     */
-    function g3TapPiece(id, el) {
-      if (g3State.placed.has(id)) return;
-      // 全ピースの選択状態をリセット
-      document.querySelectorAll('#g3-pieces button').forEach(b => {
-        b.style.outline = 'none';
-        b.style.transform = '';
-      });
-      // 同じピースをタップ→選択解除
-      if (g3State.selected === id) {
-        g3State.selected = null;
-      } else {
-        g3State.selected = id;
-        el.style.outline = '3px solid white';
-        el.style.transform = 'scale(1.1)';
-        playSound('select');
-      }
-    }
-
-    /**
-     * 穴をタップ（はめ込み試行）
-     * @param {string} id - 穴の形ID
-     */
-    function g3TapHole(id) {
-      if (!g3State.selected) return;
-
-      if (g3State.selected === id) {
-        // 正解！：ピースが穴にはまる
-        const piece = document.getElementById('g3-piece-' + id);
-        const hole = document.getElementById('g3-hole-' + id);
-        const shape = G3_SHAPES.find(s => s.id === id);
-
-        hole.textContent = shape.emoji;
-        hole.style.border = '3px solid rgba(255,255,255,0.9)';
-        hole.style.background = 'rgba(255,255,255,0.4)';
-        hole.style.transform = 'scale(1.15)';
-        setTimeout(() => hole.style.transform = '', 300);
-
-        // ピースを使用済みにする
-        piece.style.opacity = '0.3';
-        piece.style.pointerEvents = 'none';
-        piece.style.outline = 'none';
-
-        g3State.placed.add(id);
-        g3State.selected = null;
-        playSound('place');
-
-        // 全ピース配置完了かチェック
-        const stageShapes = G3_STAGES[g3State.stage];
-        if (g3State.placed.size === stageShapes.length) {
-          setTimeout(() => {
-            g3State.stage++;
-            if (g3State.stage >= G3_STAGES.length) {
-              // 全ステージクリア
-              showClear(3, 3);
-            } else {
-              // 次のステージへ
-              g3State.placed = new Set();
-              g3State.selected = null;
-              renderG3Stage();
-              playSound('stageclear');
-            }
-          }, 800);
-        }
-      } else {
-        // 不正解：穴の枠をオレンジに（赤は使わない）
-        const hole = document.getElementById('g3-hole-' + id);
-        hole.style.borderColor = '#FF9E44';
-        setTimeout(() => hole.style.borderColor = 'rgba(255,255,255,0.7)', 500);
-        playSound('wrong');
-      }
-    }
-
-    // =============================================
-    // Game 4: えさをあげよう（マッチングゲーム）
-    // =============================================
-
-    // 動物と食べ物のペアデータ
-    const G4_PAIRS = [
-      { animal: { emoji: '🐶', name: 'いぬ' },   food: { emoji: '🦴', name: 'ほね' } },
-      { animal: { emoji: '🐰', name: 'うさぎ' }, food: { emoji: '🥕', name: 'にんじん' } },
-      { animal: { emoji: '🐱', name: 'ねこ' },   food: { emoji: '🐟', name: 'さかな' } },
-      { animal: { emoji: '🐘', name: 'ぞう' },   food: { emoji: '🍌', name: 'バナナ' } },
-      { animal: { emoji: '🐻', name: 'くま' },   food: { emoji: '🍯', name: 'はちみつ' } },
-    ];
-
-    // ステージごとのペア数
-    const G4_STAGES = [3, 4];
-
-    // Game4の状態管理
-    let g4State = { stage: 0, selected: null, connected: new Set() };
-
-    /**
-     * Game4開始
-     */
-    function startG4() {
-      g4State = { stage: 0, selected: null, connected: new Set() };
-      showScreen('screen-g4-play');
-      renderG4Stage();
-    }
-
-    /**
-     * 現在のステージを描画する
-     */
-    function renderG4Stage() {
-      const { stage } = g4State;
-      const pairCount = G4_STAGES[stage];
-      const pairs = G4_PAIRS.slice(0, pairCount);
-
-      document.getElementById('g4-stage-label').textContent = `ステージ ${stage + 1} / 2`;
-
-      // SVGの線をリセット
-      const svg = document.getElementById('g4-lines');
-      svg.innerHTML = '';
-
-      // 食べ物をシャッフルして並べる
-      const shuffledFoods = [...pairs].sort(() => Math.random() - 0.5);
-
-      const animalsEl = document.getElementById('g4-animals');
-      const foodsEl   = document.getElementById('g4-foods');
-      animalsEl.innerHTML = '';
-      foodsEl.innerHTML   = '';
-
-      // 動物を左列に配置
-      pairs.forEach((pair, i) => {
-        const btn = createG4Item('animal', pair.animal, i, pair);
-        animalsEl.appendChild(btn);
-      });
-      // 食べ物を右列に配置（シャッフル済み）
-      shuffledFoods.forEach((pair, i) => {
-        const btn = createG4Item('food', pair.food, i, pair);
-        foodsEl.appendChild(btn);
-      });
-    }
-
-    /**
-     * 動物/食べ物ボタンを生成する
-     */
-    function createG4Item(type, item, idx, pair) {
-      const btn = document.createElement('button');
-      btn.dataset.type = type;
-      btn.dataset.pairKey = pair.animal.name + '_' + pair.food.name;
-      btn.id = `g4-${type}-${idx}`;
-      btn.style.cssText = `
-        width: 88px; height: 88px; border-radius: 20px; border: 3px solid transparent;
-        background: white; cursor: pointer; font-family: var(--font);
-        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-        box-shadow: 0 4px 0 rgba(0,0,0,0.12);
-        transition: transform 0.15s var(--ease-spring), border-color 0.2s ease;
-        touch-action: manipulation;
-      `;
-      btn.innerHTML = `<span style="font-size:40px">${item.emoji}</span><span style="font-size:11px; font-weight:700; color:#3D2C1E">${item.name}</span>`;
-      btn.onclick = () => g4Tap(type, pair, btn);
-      return btn;
-    }
-
-    /**
-     * 動物または食べ物をタップしたとき
-     */
-    function g4Tap(type, pair, btn) {
-      const pairKey = btn.dataset.pairKey;
-      if (g4State.connected.has(pairKey)) return;
-
-      if (!g4State.selected) {
-        // 1回目のタップ：選択状態にする
-        g4State.selected = { type, pair, btn, pairKey };
-        btn.style.borderColor = '#54C7E8';
-        btn.style.transform = 'scale(1.1)';
-        playSound('select');
-      } else {
-        const prev = g4State.selected;
-
-        // 同じ種類を再タップ → 選択を変更
-        if (prev.type === type) {
-          prev.btn.style.borderColor = 'transparent';
-          prev.btn.style.transform = '';
-          g4State.selected = { type, pair, btn, pairKey };
-          btn.style.borderColor = '#54C7E8';
-          btn.style.transform = 'scale(1.1)';
-          return;
-        }
-
-        // 動物と食べ物の組み合わせ → マッチ判定
-        const animalBtn  = prev.type === 'animal' ? prev.btn : btn;
-        const foodBtn    = prev.type === 'food'   ? prev.btn : btn;
-        const animalPair = prev.type === 'animal' ? prev.pair : pair;
-        const foodPair   = prev.type === 'food'   ? prev.pair : pair;
-
-        // 同じペアキーなら正解
-        if (animalPair.animal.name === foodPair.animal.name) {
-          animalBtn.style.borderColor = '#4CC882'; animalBtn.style.transform = '';
-          foodBtn.style.borderColor   = '#4CC882'; foodBtn.style.transform = '';
-          animalBtn.style.background = '#F0FFF4';
-          foodBtn.style.background   = '#F0FFF4';
-
-          // SVGで線を引く
-          drawG4Line(animalBtn, foodBtn);
-          g4State.connected.add(animalPair.animal.name + '_' + animalPair.food.name);
-          g4State.selected = null;
-          playSound('match');
-
-          // 全ペア成立チェック
-          const totalPairs = G4_STAGES[g4State.stage];
-          if (g4State.connected.size === totalPairs) {
-            setTimeout(() => {
-              g4State.stage++;
-              if (g4State.stage >= G4_STAGES.length) {
-                showClear(4, 3);
-              } else {
-                g4State.connected = new Set();
-                g4State.selected = null;
-                renderG4Stage();
-              }
-            }, 800);
-          }
-        } else {
-          // 不正解：オレンジのボーダー（赤は使わない）
-          animalBtn.style.borderColor = '#FF9E44';
-          foodBtn.style.borderColor   = '#FF9E44';
-          setTimeout(() => {
-            animalBtn.style.borderColor = 'transparent';
-            foodBtn.style.borderColor   = 'transparent';
-            animalBtn.style.transform = '';
-            foodBtn.style.transform   = '';
-          }, 600);
-          g4State.selected = null;
-          playSound('wrong');
+function g3BindDrag(piece){
+  let startX,startY;
+  function onDown(e){
+    e.preventDefault();
+    const touch=e.touches?e.touches[0]:e;
+    startX=touch.clientX;startY=touch.clientY;
+    const rect=piece.getBoundingClientRect();
+    piece.style.position='fixed';
+    piece.style.left=(rect.left)+'px';piece.style.top=(rect.top)+'px';
+    piece.style.zIndex=500;piece.style.transition='none';
+    piece.classList.add('dragging');
+    sound('flip');
+    // マウスドラッグ開始時のみwindowリスナーを追加（ドロップ時に解除）
+    window.addEventListener('mousemove',onMove);
+    window.addEventListener('mouseup',onUp);
+  }
+  function onMove(e){
+    e.preventDefault();
+    const touch=e.touches?e.touches[0]:e;
+    const dx=touch.clientX-startX,dy=touch.clientY-startY;
+    const rect=piece.getBoundingClientRect();
+    piece.style.left=(rect.left+dx)+'px';piece.style.top=(rect.top+dy)+'px';
+    startX=touch.clientX;startY=touch.clientY;
+  }
+  function onUp(e){
+    e.preventDefault();
+    piece.classList.remove('dragging');
+    piece.style.zIndex='';
+    // windowリスナーをドロップ時に即解除（蓄積防止）
+    window.removeEventListener('mousemove',onMove);
+    window.removeEventListener('mouseup',onUp);
+    // スロットとの当たり判定
+    const pr=piece.getBoundingClientRect();
+    const pCx=pr.left+pr.width/2,pCy=pr.top+pr.height/2;
+    const slots=document.querySelectorAll('#g3-board .g3-slot');
+    let snapped=false;
+    slots.forEach(slot=>{
+      if(slot.classList.contains('filled'))return;
+      const sr=slot.getBoundingClientRect();
+      const sCx=sr.left+sr.width/2,sCy=sr.top+sr.height/2;
+      if(Math.abs(pCx-sCx)<60&&Math.abs(pCy-sCy)<60){
+        // スナップ成功
+        piece.style.position='';piece.style.left='';piece.style.top='';piece.style.transition='';
+        slot.style.opacity='1';slot.appendChild(piece);
+        slot.classList.add('filled');
+        piece.style.pointerEvents='none';piece.style.cursor='default';
+        piece.style.width='100%';piece.style.height='100%';
+        piece.style.borderRadius='10px';
+        piece.removeEventListener('touchstart',onDown);
+        piece.removeEventListener('mousedown',onDown);
+        piece.style.animation='snapSuccess .4s cubic-bezier(0.34,1.56,0.64,1)';
+        sound('snap');
+        g3.placed++;snapped=true;
+        if(g3.placed===4){
+          document.getElementById('g3-msg').textContent='🎉 すごい！';
+          sound('match');
+          setTimeout(()=>{
+            g3.cur++;
+            if(g3.cur>=G3_PUZZLES.length){showClear(3,3);}else{g3RenderPuzzle();}
+          },1000);
         }
       }
-    }
-
-    /**
-     * 動物と食べ物の間にSVGで線を引く
-     */
-    function drawG4Line(fromEl, toEl) {
-      const svg = document.getElementById('g4-lines');
-      const r1 = fromEl.getBoundingClientRect();
-      const r2 = toEl.getBoundingClientRect();
-      // #appコンテナ基準にオフセット補正（max-width:430px のセンタリング対応）
-      const appRect = document.getElementById('app').getBoundingClientRect();
-
-      // 座標を取得（要素の中心点）
-      const x1 = r1.right - 4 - appRect.left;
-      const y1 = (r1.top + r1.bottom) / 2 - appRect.top;
-      const x2 = r2.left + 4 - appRect.left;
-      const y2 = (r2.top + r2.bottom) / 2 - appRect.top;
-
-      const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      line.setAttribute('x1', x1);
-      line.setAttribute('y1', y1);
-      line.setAttribute('x2', x2);
-      line.setAttribute('y2', y2);
-      line.setAttribute('stroke', '#4CC882');
-      line.setAttribute('stroke-width', '5');
-      line.setAttribute('stroke-linecap', 'round');
-      line.setAttribute('opacity', '0.85');
-      svg.appendChild(line);
-    }
-
-    // =============================================
-    // Game 5: いろのボール（色振り分けゲーム）
-    // =============================================
-
-    // 色データ定義（バケツとボールで共用）
-    const G5_COLORS = [
-      { id: 'red',    emoji: '🔴', color: '#FF6B6B', label: 'あか' },
-      { id: 'blue',   emoji: '🔵', color: '#54C7E8', label: 'あお' },
-      { id: 'yellow', emoji: '🟡', color: '#FFD93D', label: 'きいろ' },
-      { id: 'green',  emoji: '🟢', color: '#6BCB77', label: 'みどり' },
-      { id: 'purple', emoji: '🟣', color: '#9B59F7', label: 'むらさき' },
-    ];
-
-    // ラウンド設定（3歳向けに速度を遅く・ボールを大きく）
-    const G5_ROUND_CONFIG = [
-      { colors: 3, speedPx: 55,  ballSize: 72, count: 8  }, // ラウンド1: ゆっくり・大きい
-      { colors: 4, speedPx: 70,  ballSize: 64, count: 10 }, // ラウンド2
-      { colors: 5, speedPx: 85,  ballSize: 58, count: 12 }, // ラウンド3
-    ];
-
-    // Game5の状態管理
-    let g5State = {
-      round: 0, score: 0, balls: [], raf: null,
-      areaH: 0, areaW: 0, count: 0, done: 0, stopped: false
-    };
-    let g5LastTime = 0;
-
-    /**
-     * Game5開始
-     */
-    function startG5() {
-      if (g5State && g5State.raf) {
-        cancelAnimationFrame(g5State.raf);
-      }
-      g5State = {
-        round: 0, score: 0, balls: [], raf: null,
-        areaH: 0, areaW: 0, count: 0, done: 0, stopped: false, spawnComplete: false
-      };
-      showScreen('screen-g5-play');
-      document.getElementById('g5-score').textContent = '⭐ 0';
-      setTimeout(() => startG5Round(), 200);
-    }
-
-    /**
-     * ラウンドを開始する
-     */
-    function startG5Round() {
-      const cfg = G5_ROUND_CONFIG[g5State.round];
-      const colors = G5_COLORS.slice(0, cfg.colors);
-
-      g5State.balls = [];
-      g5State.count = 0;
-      g5State.done = 0;
-      g5State.stopped = false;
-      g5State.spawnComplete = false;
-      g5LastTime = 0;
-
-      const area = document.getElementById('g5-game-area');
-      area.innerHTML = '';
-      g5State.areaH = area.clientHeight;
-      g5State.areaW = area.clientWidth;
-
-      document.getElementById('g5-round').textContent = `ラウンド ${g5State.round + 1}/3`;
-
-      // バケツを描画
-      const bucketsEl = document.getElementById('g5-buckets');
-      bucketsEl.innerHTML = '';
-      const bucketW = Math.floor((g5State.areaW - 20) / cfg.colors);
-
-      colors.forEach(c => {
-        const bkt = document.createElement('div');
-        bkt.id = 'g5-bucket-' + c.id;
-        bkt.dataset.colorId = c.id;
-        bkt.style.cssText = `
-          width: ${bucketW}px; height: 70px;
-          border-radius: 12px 12px 20px 20px;
-          background: ${c.color}; opacity: 0.9;
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          font-size: 12px; font-weight: 800; color: white;
-          box-shadow: 0 4px 0 rgba(0,0,0,0.2);
-          border: 3px solid rgba(255,255,255,0.4);
-          gap: 2px;
-        `;
-        bkt.innerHTML = `<span style="font-size:22px">🪣</span><span>${c.label}</span>`;
-        bucketsEl.appendChild(bkt);
-      });
-
-      // ボールを定期的に生成する
-      let ballsToSpawn = cfg.count;
-
-      function spawnBall() {
-        if (ballsToSpawn <= 0 || g5State.stopped) return;
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const margin = cfg.ballSize + 10;
-        const x = margin + Math.random() * (g5State.areaW - margin * 2);
-        const ballId = 'b' + Date.now() + Math.random().toString(36).slice(2);
-
-        const el = document.createElement('div');
-        el.style.cssText = `
-          position: absolute;
-          width: ${cfg.ballSize}px; height: ${cfg.ballSize}px;
-          border-radius: 50%;
-          background: radial-gradient(circle at 35% 35%, rgba(255,255,255,0.5), ${color.color} 60%);
-          box-shadow: 0 4px 8px rgba(0,0,0,0.2), inset 0 -4px 0 rgba(0,0,0,0.15);
-          top: -${cfg.ballSize}px;
-          left: ${x - cfg.ballSize / 2}px;
-          cursor: pointer;
-          touch-action: manipulation;
-          display: flex; align-items: center; justify-content: center;
-          font-size: ${cfg.ballSize * 0.55}px;
-        `;
-        el.textContent = color.emoji;
-        area.appendChild(el);
-
-        const ball = {
-          id: ballId, el,
-          colorId: color.id,
-          x: x - cfg.ballSize / 2,
-          y: -cfg.ballSize,
-          speed: cfg.speedPx,
-          size: cfg.ballSize,
-          done: false,
-          flying: false
-        };
-        g5State.balls.push(ball);
-        g5State.count++;
-
-        // タップで早めに振り分け（pointerdownで統一してtouchstart+clickの二重発火を防止）
-        el.addEventListener('pointerdown', () => g5TapBall(ball), { once: true });
-
-        ballsToSpawn--;
-        if (ballsToSpawn > 0) {
-          setTimeout(spawnBall, 1000 + Math.random() * 800);
-        } else {
-          // 全ボールのスポーン完了フラグ（ラウンド終了判定に使用）
-          g5State.spawnComplete = true;
-        }
-      }
-
-      setTimeout(spawnBall, 500);
-
-      // requestAnimationFrameベースのゲームループ
-      g5State.raf = requestAnimationFrame(g5Loop);
-    }
-
-    /**
-     * ゲームループ（毎フレーム呼ばれる）
-     */
-    function g5Loop(timestamp) {
-      if (g5State.stopped) return;
-
-      // 前回からの経過時間（秒）
-      const dt = g5LastTime ? Math.min((timestamp - g5LastTime) / 1000, 0.05) : 0.016;
-      g5LastTime = timestamp;
-
-      g5State.balls.forEach(ball => {
-        if (ball.done || ball.flying) return;
-
-        // ボールを落下させる
-        ball.y += ball.speed * dt;
-        ball.el.style.top = ball.y + 'px';
-
-        // 画面下75%に入ったら自動でバケツへ（3歳向け自動モード）
-        if (ball.y > g5State.areaH * 0.72) {
-          g5AutoAssign(ball);
-        }
-      });
-
-      if (!g5State.stopped) {
-        g5State.raf = requestAnimationFrame(g5Loop);
-      }
-    }
-
-    /**
-     * ボールをタップしたとき（早めに振り分け）
-     */
-    function g5TapBall(ball) {
-      if (ball.done || ball.flying) return;
-      playSound('tap');
-      g5AutoAssign(ball);
-    }
-
-    /**
-     * ボールを対応するバケツに飛び込ませる
-     */
-    function g5AutoAssign(ball) {
-      if (ball.done || ball.flying) return;
-      ball.flying = true;
-      ball.done = true;
-
-      const bucket = document.getElementById('g5-bucket-' + ball.colorId);
-      if (!bucket) return;
-
-      const bRect = bucket.getBoundingClientRect();
-      const aRect = document.getElementById('g5-game-area').getBoundingClientRect();
-
-      // バケツの位置にアニメーションで移動
-      const targetTop = bRect.top - aRect.top - ball.size * 0.3;
-      const targetLeft = bRect.left + bRect.width / 2 - aRect.left - ball.size / 2;
-
-      ball.el.style.transition = 'all 0.35s var(--ease-spring)';
-      ball.el.style.top = targetTop + 'px';
-      ball.el.style.left = targetLeft + 'px';
-      ball.el.style.transform = 'scale(1.15)';
-
-      setTimeout(() => {
-        // バケツに消えるアニメーション
-        ball.el.style.transform = 'scale(0)';
-        ball.el.style.opacity = '0';
-
-        g5State.score++;
-        g5State.done++;
-        document.getElementById('g5-score').textContent = '⭐ ' + g5State.score;
-        playSound('bounce');
-
-        // ラウンド終了チェック（全スポーン済み かつ 全ボール処理済みで終了）
-        const cfg = G5_ROUND_CONFIG[g5State.round];
-        if (g5State.done >= g5State.count && g5State.spawnComplete) {
-          g5State.stopped = true;
-          cancelAnimationFrame(g5State.raf);
-          playSound('stageclear');
-          setTimeout(() => {
-            g5State.round++;
-            if (g5State.round >= G5_ROUND_CONFIG.length) {
-              showClear(5, 3);
-            } else {
-              startG5Round();
-            }
-          }, 1200);
-        }
-      }, 350);
-    }
-
-    // =============================================
-    // 初期化
-    // =============================================
-    window.addEventListener('DOMContentLoaded', () => {
-      // 最初はホーム画面を表示
-      showScreen('screen-home');
-
-      // iOSのAudioContext制限：最初のタップでAudioContextを初期化
-      document.addEventListener('touchstart', () => {
-        if (!_audioCtx) getAudioCtx();
-      }, { once: true });
-
-      // 画面向きの変更を検知
-      try {
-        screen.orientation.lock('portrait').catch(() => {});
-      } catch (e) {}
     });
-  </script>
+    if(!snapped){
+      // 元に戻す
+      piece.style.position='';piece.style.left='';piece.style.top='';
+      piece.style.transition='transform .3s ease';
+      piece.style.transform='';
+      setTimeout(()=>{piece.style.transition='';},400);
+      sound('wrong');
+    }
+  }
+  piece.addEventListener('touchstart',onDown,{passive:false});
+  piece.addEventListener('touchmove',onMove,{passive:false});
+  piece.addEventListener('touchend',onUp,{passive:false});
+  piece.addEventListener('mousedown',onDown);
+  // windowリスナーはonDownで追加・onUpで解除（ここでは追加しない）
+}
+
+/* =============================================
+   GAME 4: バブルはじき
+============================================= */
+const G4_COLORS=['#FF5252','#FF9800','#FFEB3B','#4CAF50','#2196F3','#E040FB','#FF4081','#00BCD4'];
+let g4={remain:20,round:1,popped:0};
+
+function startG4(){
+  g4.remain=20;g4.round=1;
+  document.getElementById('g4-remain').textContent=20;
+  document.getElementById('g4-round').textContent=1;
+  document.getElementById('g4-area').innerHTML='';
+  showScreen('sc-g4-play');
+  if(window.g4Interval)clearInterval(window.g4Interval);
+  g4SpawnLoop();
+}
+
+function g4SpawnLoop(){
+  let spawned=0;
+  const total=20;
+  window.g4Interval=setInterval(()=>{
+    const area=document.getElementById('g4-area');
+    if(!area||document.querySelectorAll('.bubble').length>14)return;
+    const size=75+Math.random()*40;
+    const color=G4_COLORS[Math.floor(Math.random()*G4_COLORS.length)];
+    const dur=3+Math.random()*2.5;
+    const b=document.createElement('div');
+    b.className='bubble';
+    b.style.cssText=`
+      width:${size}px;height:${size}px;
+      left:${5+Math.random()*80}%;
+      bottom:-${size}px;
+      background:radial-gradient(circle at 35% 35%,rgba(255,255,255,0.85),rgba(255,255,255,0.3) 30%,${color} 60%,rgba(0,0,0,0.05));
+      border:2px solid rgba(255,255,255,0.6);
+      --rise-dur:${dur}s;
+      --rise-dist:${90+Math.random()*30}vh;
+      box-shadow:inset -4px -4px 8px rgba(0,0,0,0.08);
+    `;
+    b.onclick=()=>popBubble(b);
+    b.ontouchstart=(e)=>{e.preventDefault();popBubble(b);};
+    area.appendChild(b);
+    spawned++;
+    // アニメーション終了で削除
+    setTimeout(()=>{if(b.parentNode)b.remove();},dur*1000+100);
+  },900);
+}
+
+function popBubble(b){
+  if(b.dataset.popped)return;
+  b.dataset.popped='1';
+  b.classList.add('bubble-pop');
+  sound('pop');
+  // スコアフロート
+  const rect=b.getBoundingClientRect();
+  const f=document.createElement('div');
+  f.className='score-float';
+  f.textContent='+1';
+  f.style.left=rect.left+'px';f.style.top=rect.top+'px';
+  document.body.appendChild(f);
+  setTimeout(()=>f.remove(),900);
+  setTimeout(()=>{if(b.parentNode)b.remove();},300);
+  g4.remain--;
+  const el=document.getElementById('g4-remain');
+  if(el)el.textContent=g4.remain;
+  if(g4.remain<=0){
+    clearInterval(window.g4Interval);window.g4Interval=null;
+    g4.round++;
+    if(g4.round>3){setTimeout(()=>showClear(4,3),500);}
+    else{
+      g4.remain=20;
+      document.getElementById('g4-remain').textContent=20;
+      document.getElementById('g4-round').textContent=g4.round;
+      document.getElementById('g4-area').innerHTML='';
+      g4SpawnLoop();
+    }
+  }
+}
+
+/* =============================================
+   GAME 5: たべものあわせ
+============================================= */
+const G5_PAIRS=[
+  {a:{e:'🐶',n:'いぬ'},f:{e:'🦴',n:'ほね'}},
+  {a:{e:'🐰',n:'うさぎ'},f:{e:'🥕',n:'にんじん'}},
+  {a:{e:'🐱',n:'ねこ'},f:{e:'🐟',n:'さかな'}},
+  {a:{e:'🐼',n:'パンダ'},f:{e:'🎍',n:'たけ'}},
+  {a:{e:'🐻',n:'くま'},f:{e:'🍯',n:'はちみつ'}},
+];
+const G5_STAGES=[[0,1,2],[2,3,4],[0,1,3,4]];
+let g5={stage:0,selected:null,matched:[]};
+
+function startG5(){
+  g5.stage=0;g5.selected=null;g5.matched=[];
+  showScreen('sc-g5-play');
+  g5Render();
+}
+
+function g5Render(){
+  document.getElementById('g5-stage-el').textContent=g5.stage+1;
+  const pairIdxs=G5_STAGES[g5.stage];
+  const pairs=pairIdxs.map(i=>G5_PAIRS[i]);
+  g5.selected=null;g5.matched=[];
+
+  // 動物エリア
+  const animalsEl=document.getElementById('g5-animals');
+  animalsEl.innerHTML='';
+  pairs.forEach((pair,i)=>{
+    const row=document.createElement('div');
+    row.className='g5-animal-row';
+    row.dataset.idx=i;
+    row.innerHTML=`<span class="g5-animal-emoji">${pair.a.e}</span><span class="g5-animal-name">${pair.a.n}</span>`;
+    row.onclick=()=>{
+      // 動物選択
+      document.querySelectorAll('.g5-animal-row').forEach(r=>r.classList.remove('selected'));
+      row.classList.add('selected');g5.selected=i;
+    };
+    animalsEl.appendChild(row);
+  });
+
+  // たべもの（シャッフル）
+  const foodEl=document.getElementById('g5-foods');
+  foodEl.innerHTML='';
+  let foodOrder=pairs.map((_,i)=>i);
+  for(let i=foodOrder.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[foodOrder[i],foodOrder[j]]=[foodOrder[j],foodOrder[i]];}
+  foodOrder.forEach(fi=>{
+    const pair=pairs[fi];
+    const btn=document.createElement('button');
+    btn.className='g5-food-btn';
+    btn.dataset.fi=fi;
+    btn.innerHTML=`<span class="g5-food-emoji">${pair.f.e}</span><span class="g5-food-name">${pair.f.n}</span>`;
+    btn.onclick=()=>g5Select(fi,btn,pairs);
+    foodEl.appendChild(btn);
+  });
+}
+
+function g5Select(fi,btn,pairs){
+  if(g5.selected===null)return;
+  if(g5.selected===fi){
+    // 正解
+    btn.classList.add('matched-food');
+    const row=document.querySelector(`.g5-animal-row[data-idx="${g5.selected}"]`);
+    if(row){row.style.background='rgba(200,240,200,0.8)';row.style.borderColor='#66BB6A';}
+    sound('match');g5.matched.push(g5.selected);g5.selected=null;
+    document.querySelectorAll('.g5-animal-row').forEach(r=>r.classList.remove('selected'));
+    if(g5.matched.length>=G5_STAGES[g5.stage].length){
+      setTimeout(()=>{
+        g5.stage++;
+        if(g5.stage>=G5_STAGES.length){showClear(5,3);}else{g5Render();}
+      },800);
+    }
+  }else{
+    // 不正解（優しいフィードバック）
+    btn.classList.add('wrong-flash');
+    sound('wrong');
+    setTimeout(()=>btn.classList.remove('wrong-flash'),500);
+  }
+}
+
+/* =============================================
+   GAME 6: いろをぬろう
+============================================= */
+const G6_PALETTE=['#FF5252','#FF9800','#FFD740','#66BB6A','#448AFF','#FF80AB','#AB47BC','#4DD0E1'];
+const G6_PICS=[
+  // ねこ（SVGパス）
+  `<ellipse class="cr" cx="130" cy="120" rx="70" ry="65" fill="#fff" data-zone="body"/>
+   <polygon class="cr" points="75,65 60,30 95,60" fill="#fff" data-zone="ear-l"/>
+   <polygon class="cr" points="185,65 200,30 165,60" fill="#fff" data-zone="ear-r"/>
+   <ellipse class="cr" cx="105" cy="100" rx="14" ry="16" fill="#1a1a2e" data-zone="eye-l"/>
+   <ellipse class="cr" cx="155" cy="100" rx="14" ry="16" fill="#1a1a2e" data-zone="eye-r"/>
+   <ellipse class="cr" cx="130" cy="125" rx="12" ry="8" fill="#ff9999" data-zone="nose"/>
+   <line x1="90" y1="125" x2="50" y2="115" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+   <line x1="90" y1="130" x2="48" y2="132" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+   <line x1="170" y1="125" x2="210" y2="115" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+   <line x1="170" y1="130" x2="212" y2="132" stroke="#333" stroke-width="2" stroke-linecap="round"/>
+   <ellipse class="cr" cx="130" cy="175" rx="40" ry="20" fill="#fff" data-zone="belly"/>`,
+  // たいよう
+  `<circle class="cr" cx="130" cy="110" r="55" fill="#FFD740" data-zone="sun"/>
+   <rect class="cr" x="122" y="28" width="16" height="36" rx="8" fill="#FFD740" data-zone="ray-t"/>
+   <rect class="cr" x="122" y="156" width="16" height="36" rx="8" fill="#FFD740" data-zone="ray-b"/>
+   <rect class="cr" x="28" y="102" width="36" height="16" rx="8" fill="#FFD740" data-zone="ray-l"/>
+   <rect class="cr" x="196" y="102" width="36" height="16" rx="8" fill="#FFD740" data-zone="ray-r"/>
+   <rect class="cr" x="65" y="47" width="16" height="36" rx="8" fill="#FFD740" transform="rotate(45 73 65)" data-zone="ray-tl"/>
+   <rect class="cr" x="179" y="47" width="16" height="36" rx="8" fill="#FFD740" transform="rotate(-45 187 65)" data-zone="ray-tr"/>
+   <rect class="cr" x="65" y="147" width="16" height="36" rx="8" fill="#FFD740" transform="rotate(-45 73 165)" data-zone="ray-bl"/>
+   <rect class="cr" x="179" y="147" width="16" height="36" rx="8" fill="#FFD740" transform="rotate(45 187 165)" data-zone="ray-br"/>
+   <circle class="cr" cx="113" cy="100" r="10" fill="#333" data-zone="eye-l"/>
+   <circle class="cr" cx="147" cy="100" r="10" fill="#333" data-zone="eye-r"/>
+   <path d="M112 120 Q130 135 148 120" fill="none" stroke="#333" stroke-width="4" stroke-linecap="round" data-zone="mouth"/>`,
+  // はな
+  `<ellipse class="cr" cx="130" cy="60" rx="26" ry="38" fill="#FF80AB" data-zone="petal-t"/>
+   <ellipse class="cr" cx="130" cy="160" rx="26" ry="38" fill="#FF80AB" data-zone="petal-b"/>
+   <ellipse class="cr" cx="80" cy="110" rx="38" ry="26" fill="#FF80AB" data-zone="petal-l"/>
+   <ellipse class="cr" cx="180" cy="110" rx="38" ry="26" fill="#FF80AB" data-zone="petal-r"/>
+   <ellipse class="cr" cx="95" cy="75" rx="20" ry="30" fill="#FF80AB" transform="rotate(-45 95 75)" data-zone="petal-tl"/>
+   <ellipse class="cr" cx="165" cy="75" rx="20" ry="30" fill="#FF80AB" transform="rotate(45 165 75)" data-zone="petal-tr"/>
+   <ellipse class="cr" cx="95" cy="145" rx="20" ry="30" fill="#FF80AB" transform="rotate(45 95 145)" data-zone="petal-bl"/>
+   <ellipse class="cr" cx="165" cy="145" rx="20" ry="30" fill="#FF80AB" transform="rotate(-45 165 145)" data-zone="petal-br"/>
+   <circle class="cr" cx="130" cy="110" r="32" fill="#FFD740" data-zone="center"/>
+   <ellipse class="cr" cx="100" cy="195" rx="22" ry="14" fill="#66BB6A" transform="rotate(-30 100 195)" data-zone="leaf-l"/>
+   <ellipse class="cr" cx="160" cy="195" rx="22" ry="14" fill="#66BB6A" transform="rotate(30 160 195)" data-zone="leaf-r"/>`,
+];
+let g6={cur:0,color:'#FF5252'};
+
+function startG6(){
+  g6.cur=0;g6.color='#FF5252';
+  showScreen('sc-g6-play');
+  g6Render();
+}
+
+function g6Render(){
+  document.getElementById('g6-pic-el').textContent=g6.cur+1;
+  const svg=document.getElementById('g6-svg');
+  svg.innerHTML=G6_PICS[g6.cur];
+  // タップで塗る
+  svg.querySelectorAll('.cr').forEach(el=>{
+    el.onclick=()=>{
+      el.style.fill=g6.color;
+      sound('paint');
+      // 全部塗ったかチェック
+      const zones=svg.querySelectorAll('.cr');
+      const filled=[...zones].filter(z=>z.style.fill&&z.style.fill!=='');
+      if(filled.length>=zones.length){
+        document.getElementById('g6-next-btn').style.display='block';
+      }
+    };
+  });
+  // パレット
+  const pal=document.getElementById('g6-palette');
+  pal.innerHTML='';
+  G6_PALETTE.forEach(c=>{
+    const btn=document.createElement('div');
+    btn.className='g6-color-btn'+(c===g6.color?' selected':'');
+    btn.style.background=c;
+    btn.onclick=()=>{
+      g6.color=c;
+      pal.querySelectorAll('.g6-color-btn').forEach(b=>b.classList.remove('selected'));
+      btn.classList.add('selected');
+      sound('flip');
+    };
+    pal.appendChild(btn);
+  });
+  document.getElementById('g6-next-btn').style.display='none';
+}
+
+function g6Next(){
+  g6.cur++;
+  if(g6.cur>=G6_PICS.length){showClear(6,3);}else{g6Render();}
+}
+
+/* =============================================
+   初期化
+============================================= */
+window.addEventListener('DOMContentLoaded',()=>{
+  showScreen('sc-home');
+  // AudioContextは最初のタップで起動
+  document.addEventListener('pointerdown',()=>{if(!_ctx)getCtx();},{once:true});
+});
+</script>
 </body>
 </html>
